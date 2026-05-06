@@ -1,0 +1,1332 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Common Sage — Venture Kick Stage 1</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<script src="deck-stage.js"></script>
+<style>
+  /* ---------- Tokens ---------- */
+  :root {
+    --navy:        #1B2A4A;
+    --navy-2:      #243657;
+    --blue:        #4A90D9;
+    --sky:         #D4EEFF;
+    --sky-border:  #B8DFFC;
+    --cream:       #F5EDE6;
+    --white:       #FFFFFF;
+    --ink:         #2A2A2A;
+    --muted:       #7A8A9E;
+    --green:       #27AE60;
+    --red:         #F07070;
+    --gold:        #D4943A;
+
+    --serif: Georgia, "Iowan Old Style", "Source Serif Pro", "Times New Roman", serif;
+    --sans:  "Inter", "Helvetica Neue", Helvetica, Calibri, system-ui, -apple-system, Arial, sans-serif;
+  }
+
+  html, body { background: #000; }
+
+  deck-stage > section {
+    background: var(--cream);
+    color: var(--ink);
+    font-family: var(--sans);
+    padding: 88px 112px;
+    box-sizing: border-box;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* ---------- Common chrome ---------- */
+  .brand-mark {
+    position: absolute;
+    top: 56px; left: 112px;
+    font-family: var(--serif);
+    font-size: 22px;
+    color: var(--blue);
+    letter-spacing: 0.01em;
+  }
+  .brand-mark::before {
+    content: "";
+    display: inline-block;
+    width: 10px; height: 10px;
+    background: var(--blue);
+    border-radius: 50%;
+    margin-right: 12px;
+    transform: translateY(-2px);
+  }
+  .slide-num {
+    position: absolute;
+    bottom: 48px; right: 112px;
+    font-family: var(--sans);
+    font-size: 16px;
+    color: var(--muted);
+    letter-spacing: 0.18em;
+  }
+
+  h1.slide-title {
+    font-family: var(--serif);
+    font-weight: 700;
+    font-size: 84px;
+    line-height: 1.02;
+    letter-spacing: -0.015em;
+    margin: 110px 0 56px 0;
+    color: var(--navy);
+  }
+  h1.slide-title.smaller { font-size: 68px; }
+  .subtitle {
+    font-family: var(--sans);
+    font-size: 24px;
+    color: var(--muted);
+    margin: -36px 0 56px 0;
+  }
+
+  .row { display: flex; gap: 32px; }
+  .col { flex: 1; min-width: 0; }
+
+  /* ---------- Animations (fade/slide only) ---------- */
+  @keyframes fadeIn   { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  @keyframes slideInL { from { opacity: 0; transform: translateX(-24px); } to { opacity: 1; transform: none; } }
+  @keyframes slideInR { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: none; } }
+  @keyframes slideInUp{ from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
+  @keyframes pop      { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
+  @keyframes pulseDot { 0% { box-shadow: 0 0 0 0 rgba(39,174,96,0.55); } 70% { box-shadow: 0 0 0 14px rgba(39,174,96,0); } 100% { box-shadow: 0 0 0 0 rgba(39,174,96,0); } }
+
+  /* Animations only run when the slide is current */
+  deck-stage > section[data-current="true"] .anim-fade   { animation: fadeIn   .6s both; }
+  deck-stage > section[data-current="true"] .anim-left   { animation: slideInL .6s both; }
+  deck-stage > section[data-current="true"] .anim-right  { animation: slideInR .6s both; }
+  deck-stage > section[data-current="true"] .anim-up     { animation: slideInUp .6s both; }
+  deck-stage > section[data-current="true"] .anim-pop    { animation: pop .5s both; }
+  deck-stage > section:not([data-current="true"]) .anim-fade,
+  deck-stage > section:not([data-current="true"]) .anim-left,
+  deck-stage > section:not([data-current="true"]) .anim-right,
+  deck-stage > section:not([data-current="true"]) .anim-up,
+  deck-stage > section:not([data-current="true"]) .anim-pop { opacity: 0; }
+
+  .d-100 { animation-delay: .10s !important; }
+  .d-200 { animation-delay: .20s !important; }
+  .d-300 { animation-delay: .30s !important; }
+  .d-400 { animation-delay: .40s !important; }
+  .d-500 { animation-delay: .50s !important; }
+  .d-600 { animation-delay: .60s !important; }
+  .d-700 { animation-delay: .70s !important; }
+  .d-800 { animation-delay: .80s !important; }
+  .d-900 { animation-delay: .90s !important; }
+  .d-1000{ animation-delay: 1.0s !important; }
+  .d-1200{ animation-delay: 1.2s !important; }
+
+  /* ---------- Reusable card primitives ---------- */
+  .card-sky {
+    background: var(--sky);
+    border: 1px solid var(--sky-border);
+    border-radius: 14px;
+    padding: 32px;
+  }
+  .card-white {
+    background: var(--white);
+    border: 1px solid #ECE3DA;
+    border-radius: 14px;
+    padding: 28px;
+    box-shadow: 0 1px 0 rgba(27,42,74,0.04), 0 8px 24px -16px rgba(27,42,74,0.18);
+  }
+  .card-navy {
+    background: var(--navy);
+    color: #EAF1FB;
+    border-radius: 14px;
+    padding: 40px;
+  }
+
+  .pain {
+    background: var(--white);
+    border-left: 4px solid var(--blue);
+    border-radius: 4px 10px 10px 4px;
+    padding: 22px 26px;
+  }
+  .pain h3 {
+    font-family: var(--serif);
+    font-size: 26px;
+    color: var(--navy);
+    margin: 0 0 6px 0;
+  }
+  .pain p { margin: 0; color: var(--ink); font-size: 19px; }
+
+  /* =================================================
+     SLIDE 1 — The Problem
+     ================================================= */
+  .s1-stat {
+    background: var(--navy);
+    color: #fff;
+    border-radius: 16px;
+    padding: 56px 48px;
+    height: 100%;
+    display: flex; flex-direction: column; justify-content: space-between;
+    min-height: 520px;
+  }
+  .s1-stat .num {
+    font-family: var(--serif);
+    color: var(--blue);
+    font-size: 240px;
+    line-height: 0.9;
+    letter-spacing: -0.04em;
+    font-weight: 700;
+  }
+  .s1-stat .lab { font-size: 26px; line-height: 1.35; max-width: 18ch; }
+  .s1-stat .src { font-size: 15px; color: #9FB2CE; font-style: italic; margin-top: 18px; }
+
+  /* =================================================
+     SLIDE 2 — The Insight (network)
+     ================================================= */
+  .s2-net {
+    background: var(--white);
+    border: 1px solid var(--sky-border);
+    border-radius: 16px;
+    height: 640px;
+    position: relative;
+    overflow: hidden;
+  }
+  .s2-net svg { width: 100%; height: 100%; display: block; }
+  .s2-meta {
+    background: var(--navy);
+    color: #EAF1FB;
+    border-radius: 16px;
+    padding: 56px 48px;
+    height: 640px;
+    box-sizing: border-box;
+    display: flex; flex-direction: column; justify-content: center;
+  }
+  .s2-meta .bulb {
+    width: 44px; height: 44px;
+    background: rgba(74,144,217,0.18);
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 28px;
+  }
+  .s2-meta blockquote {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 30px;
+    line-height: 1.4;
+    margin: 0;
+    color: #EAF1FB;
+  }
+  .s2-meta blockquote p { margin: 0 0 18px 0; }
+  .s2-meta blockquote p:last-child { margin: 0; color: var(--blue); }
+
+  /* =================================================
+     SLIDE 3 — How it works
+     ================================================= */
+  .s3-row-label {
+    color: var(--blue);
+    font-family: var(--serif);
+    font-size: 22px;
+    margin: 0 0 14px 4px;
+    letter-spacing: 0.02em;
+  }
+  .s3-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; }
+  .s3-step {
+    background: var(--white);
+    border: 1px solid #ECE3DA;
+    border-radius: 12px;
+    padding: 22px 22px 24px;
+    box-shadow: 0 8px 22px -18px rgba(27,42,74,0.25);
+  }
+  .s3-step .n {
+    width: 38px; height: 38px; border-radius: 50%;
+    color: #fff; font-weight: 600; font-size: 17px;
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 14px;
+  }
+  .s3-step.edu .n { background: var(--blue); }
+  .s3-step.stu .n { background: var(--navy); }
+  .s3-step h4 {
+    font-family: var(--serif);
+    font-size: 24px;
+    margin: 0 0 6px 0;
+    color: var(--navy);
+  }
+  .s3-step p { margin: 0; color: var(--muted); font-size: 16px; line-height: 1.4; }
+  .s3-foot {
+    margin-top: 36px;
+    text-align: center;
+    font-style: italic;
+    color: var(--muted);
+    font-size: 19px;
+  }
+
+  /* =================================================
+     SLIDE 4 — What it produces
+     ================================================= */
+  .s4-row { display: grid; grid-template-columns: repeat(6, 1fr); gap: 16px; }
+  .s4-card {
+    background: var(--white);
+    border: 1px solid #ECE3DA;
+    border-radius: 12px;
+    padding: 26px 18px;
+    text-align: center;
+    position: relative;
+    box-shadow: 0 8px 22px -18px rgba(27,42,74,0.25);
+  }
+  .s4-card .ico {
+    width: 56px; height: 56px;
+    background: var(--sky);
+    border: 1px solid var(--sky-border);
+    border-radius: 12px;
+    margin: 0 auto 14px;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--blue);
+  }
+  .s4-card h4 {
+    font-family: var(--serif);
+    color: var(--navy);
+    margin: 0;
+    font-size: 20px;
+  }
+  .s4-card .live {
+    position: absolute; top: 12px; right: 12px;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--green);
+    animation: pulseDot 2s infinite;
+  }
+  .s4-legend {
+    text-align: center;
+    color: var(--muted);
+    font-size: 16px;
+    margin: 22px 0 40px;
+  }
+  .s4-legend .dot-live   { display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--green); margin-right:6px; transform: translateY(-1px); }
+  .s4-legend .dot-soon   { display:inline-block; width:8px; height:8px; border-radius:50%; background:transparent; border:1.5px solid var(--muted); margin: 0 6px 0 16px; transform: translateY(-1px); }
+
+  .s4-diff { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+  .s4-diff .d {
+    background: var(--sky);
+    border: 1px solid var(--sky-border);
+    border-radius: 12px;
+    padding: 22px 24px;
+    display: flex; gap: 14px; align-items: flex-start;
+  }
+  .s4-diff .check {
+    width: 24px; height: 24px;
+    color: var(--blue);
+    flex-shrink: 0;
+  }
+  .s4-diff h4 {
+    font-family: var(--serif);
+    color: var(--navy);
+    margin: 0 0 4px 0;
+    font-size: 22px;
+  }
+  .s4-diff p { margin: 0; color: var(--ink); font-size: 16px; line-height: 1.4; }
+
+  /* =================================================
+     SLIDE 5 — Comparison
+     ================================================= */
+  .s5-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    background: var(--white);
+    border-radius: 14px;
+    overflow: hidden;
+    border: 1px solid #ECE3DA;
+    font-size: 19px;
+  }
+  .s5-table th, .s5-table td {
+    padding: 18px 22px;
+    text-align: left;
+    border-bottom: 1px solid #F0E8DF;
+  }
+  .s5-table tr:last-child td { border-bottom: none; }
+  .s5-table thead th {
+    background: var(--navy);
+    color: #EAF1FB;
+    font-family: var(--sans);
+    font-weight: 600;
+    font-size: 17px;
+    letter-spacing: 0.02em;
+  }
+  .s5-table thead th.cs {
+    background: var(--blue);
+    color: #fff;
+  }
+  .s5-table tbody td.cs {
+    background: var(--sky);
+    color: var(--navy);
+    font-weight: 600;
+  }
+  .s5-table tbody tr:nth-child(even) td:not(.cs) { background: #FAF6F1; }
+  .s5-table tbody td:first-child {
+    font-family: var(--serif);
+    color: var(--navy);
+    font-weight: 600;
+  }
+  .s5-foot {
+    margin-top: 26px;
+    font-style: italic;
+    color: var(--muted);
+    font-size: 19px;
+  }
+  .s5-table .mark {
+    display: inline-block;
+    width: 12px;
+    text-align: center;
+    margin-right: 8px;
+    font-size: 14px;
+    line-height: 1;
+    transform: translateY(-1px);
+  }
+  .s5-table .mark.good { color: var(--green); }
+  .s5-table .mark.warn { color: var(--gold); }
+  .s5-table .mark.bad  { color: var(--red); }
+
+  /* =================================================
+     SLIDE 6 — Market & Timing
+     ================================================= */
+  .s6-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-bottom: 28px; }
+  .s6-stat {
+    background: var(--white);
+    border: 1px solid #ECE3DA;
+    border-radius: 14px;
+    padding: 36px 32px;
+    box-shadow: 0 12px 30px -22px rgba(27,42,74,0.3);
+  }
+  .s6-stat .num {
+    font-family: var(--serif);
+    font-size: 92px;
+    line-height: 1;
+    color: var(--navy);
+    letter-spacing: -0.02em;
+    font-weight: 700;
+  }
+  .s6-stat .lab { color: var(--muted); margin-top: 10px; font-size: 18px; line-height: 1.4; }
+
+  .s6-summary {
+    text-align: center;
+    color: var(--ink);
+    font-size: 19px;
+    margin-bottom: 28px;
+    letter-spacing: 0.01em;
+  }
+
+  .s6-reg {
+    background: var(--navy);
+    color: #EAF1FB;
+    border-radius: 14px;
+    padding: 28px 36px;
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: 28px;
+    align-items: center;
+  }
+  .s6-reg-tag {
+    font-family: var(--serif);
+    color: var(--blue);
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+  }
+  .s6-reg p {
+    margin: 0;
+    font-size: 17px;
+    line-height: 1.5;
+    color: #DDE6F2;
+  }
+
+  /* =================================================
+     SLIDE 7 — Business model
+     ================================================= */
+  .s7-tiers { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-bottom: 32px; }
+  .s7-tier {
+    background: var(--white);
+    border: 1px solid var(--sky-border);
+    border-radius: 14px;
+    padding: 30px 32px;
+  }
+  .s7-tier .name { color: var(--blue); font-family: var(--serif); font-size: 22px; margin-bottom: 10px; }
+  .s7-tier .price { font-family: var(--serif); font-size: 44px; color: var(--navy); font-weight: 700; }
+  .s7-tier .scope { color: var(--muted); font-size: 17px; margin-top: 6px; }
+
+  .s7-years { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+  .s7-year {
+    background: var(--white);
+    border-radius: 4px 12px 12px 4px;
+    padding: 26px 28px;
+  }
+  .s7-year.neg { border-left: 5px solid var(--red); }
+  .s7-year.pos { border-left: 5px solid var(--green); }
+  .s7-year .y { color: var(--muted); font-size: 16px; letter-spacing: 0.06em; }
+  .s7-year .net { font-family: var(--serif); font-size: 38px; font-weight: 700; margin: 4px 0 6px; }
+  .s7-year.neg .net { color: var(--red); }
+  .s7-year.pos .net { color: var(--green); }
+  .s7-year .meta { color: var(--ink); font-size: 16px; line-height: 1.45; }
+  .s7-year .meta .rev { color: var(--muted); display: block; margin-top: 4px; }
+
+  /* =================================================
+     SLIDE 8 — Team
+     ================================================= */
+  .s8-team { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; }
+  .s8-team.two { grid-template-columns: repeat(2, 1fr); max-width: 1100px; margin: 0 auto; }
+  .s8-person {
+    background: var(--white);
+    border: 1px solid #ECE3DA;
+    border-radius: 14px;
+    padding: 32px 28px;
+    text-align: center;
+  }
+  .s8-avatar {
+    width: 116px; height: 116px;
+    border-radius: 50%;
+    background: var(--navy);
+    color: #fff;
+    font-family: var(--serif);
+    font-size: 48px;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 18px;
+  }
+  .s8-person h3 { font-family: var(--serif); margin: 0; font-size: 28px; color: var(--navy); }
+  .s8-person .role { color: var(--blue); font-size: 17px; margin: 4px 0 12px; }
+  .s8-person p { color: var(--muted); font-size: 16px; line-height: 1.45; margin: 0 0 14px; }
+  .s8-badge {
+    display: inline-block;
+    background: var(--sky);
+    color: var(--navy);
+    border: 1px solid var(--sky-border);
+    border-radius: 999px;
+    padding: 4px 12px;
+    font-size: 13px;
+    letter-spacing: 0.04em;
+  }
+  .s8-mission {
+    margin-top: 30px;
+    background: var(--navy);
+    color: #EAF1FB;
+    border-radius: 14px;
+    padding: 28px 36px;
+    font-family: var(--serif);
+    font-size: 24px;
+    line-height: 1.4;
+  }
+  .s8-mission strong { color: var(--blue); font-weight: 600; }
+  .s8-foot {
+    text-align: center;
+    margin-top: 16px;
+    font-style: italic;
+    color: var(--muted);
+    font-size: 16px;
+  }
+
+  /* =================================================
+     SLIDE 9 — Traction
+     ================================================= */
+  .s9-cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+  .s9-col {
+    background: var(--white);
+    border: 1px solid #ECE3DA;
+    border-radius: 14px;
+    padding: 28px 28px 30px;
+  }
+  .s9-col h3 {
+    font-family: var(--serif);
+    margin: 0 0 18px;
+    font-size: 26px;
+    letter-spacing: 0.02em;
+  }
+  .s9-col.done h3 { color: var(--blue); }
+  .s9-col.now  h3 { color: var(--gold); }
+  .s9-col.next h3 { color: var(--navy); }
+  .s9-col.now {
+    border: 1px solid #EFD9B0;
+    box-shadow: 0 0 0 3px rgba(212,148,58,0.10), 0 12px 30px -22px rgba(27,42,74,0.3);
+  }
+  .s9-col ul { list-style: none; padding: 0; margin: 0; }
+  .s9-col li {
+    display: flex; gap: 12px; align-items: flex-start;
+    padding: 10px 0;
+    color: var(--ink);
+    font-size: 17px;
+    line-height: 1.4;
+    border-top: 1px solid #F4ECE3;
+  }
+  .s9-col li:first-child { border-top: none; }
+  .s9-col li svg { flex-shrink: 0; margin-top: 3px; }
+  .s9-col.done li svg { color: var(--blue); }
+  .s9-col.now  li svg { color: var(--gold); }
+  .s9-col.next li svg { color: var(--navy); }
+
+  /* =================================================
+     SLIDE 10 — The Ask
+     ================================================= */
+  .s10 { background: var(--navy) !important; color: #EAF1FB; padding: 96px 120px !important; }
+  .s10 .brand-mark { color: var(--blue); }
+  .s10 .slide-num { color: rgba(234,241,251,0.5); }
+  .s10::after {
+    content: "";
+    position: absolute;
+    width: 720px; height: 720px;
+    border-radius: 50%;
+    background: var(--navy-2);
+    top: -200px; right: -240px;
+  }
+  .s10-inner { position: relative; z-index: 1; }
+  .s10 h1 {
+    font-family: var(--serif);
+    font-size: 188px;
+    color: var(--blue);
+    margin: 90px 0 48px;
+    line-height: 0.95;
+    letter-spacing: -0.03em;
+    font-weight: 700;
+  }
+  .s10 .ask-label {
+    color: rgba(234,241,251,0.6);
+    letter-spacing: 0.18em;
+    font-size: 16px;
+    margin-top: 90px;
+  }
+  .s10 ul { list-style: none; padding: 0; margin: 0 0 56px; }
+  .s10 ul li {
+    display: flex; gap: 18px; align-items: flex-start;
+    font-size: 24px;
+    padding: 14px 0;
+    border-top: 1px solid rgba(234,241,251,0.10);
+    color: #EAF1FB;
+  }
+  .s10 ul li:first-child { border-top: none; }
+  .s10 ul li svg { color: var(--blue); flex-shrink: 0; margin-top: 5px; }
+  .s10 .vision {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 36px;
+    color: var(--blue);
+    margin-bottom: 56px;
+  }
+  .s10 .signed {
+    color: rgba(74,144,217,0.7);
+    font-size: 17px;
+    letter-spacing: 0.04em;
+  }
+</style>
+</head>
+<body>
+
+<deck-stage>
+
+<!-- =====================================================
+     SLIDE 1 — The Problem
+     ===================================================== -->
+<section data-screen-label="01 The Problem">
+  <div class="brand-mark">Common Sage</div>
+  <h1 class="slide-title anim-fade">The Problem.</h1>
+
+  <div class="row" style="gap: 40px;">
+    <div class="col" style="flex: 1.05;">
+      <div class="s1-stat anim-left">
+        <div>
+          <div class="num">97%</div>
+        </div>
+        <div>
+          <div class="lab">of UZH students already use AI tools for studying.</div>
+          <div class="src">UZH Survey, 2024</div>
+        </div>
+      </div>
+    </div>
+    <div class="col" style="flex: 1.1; display: flex; flex-direction: column; gap: 18px; justify-content: center;">
+      <div class="pain anim-right d-200">
+        <h3>Dead content</h3>
+        <p>PDFs and slides. One format. Not interactive.</p>
+      </div>
+      <div class="pain anim-right d-400">
+        <h3>Fragmented learning</h3>
+        <p>Students use ChatGPT. Unreviewed. Misaligned.</p>
+      </div>
+      <div class="pain anim-right d-600">
+        <h3>No course intelligence</h3>
+        <p>Nobody knows what students have actually learned.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="slide-num">01 / 10</div>
+</section>
+
+
+<!-- =====================================================
+     SLIDE 2 — The Insight
+     ===================================================== -->
+<section data-screen-label="02 The Insight">
+  <div class="brand-mark">Common Sage</div>
+  <h1 class="slide-title anim-fade">A course is a network.</h1>
+
+  <div class="row" style="gap: 32px;">
+    <div class="col" style="flex: 1.15;">
+      <div class="s2-net anim-left">
+        <svg id="network-svg" viewBox="0 0 720 640" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+          <!-- Phase 1: linear PDFs row -->
+          <g id="phase1" style="opacity: 0;">
+            <g font-family="Inter, system-ui" font-size="13" fill="#7A8A9E" text-anchor="middle">
+              <g transform="translate(60,300)">
+                <rect width="110" height="80" rx="6" fill="#EFE7DD" stroke="#D8CFC2" />
+                <text x="55" y="46">PDF</text>
+              </g>
+              <g transform="translate(220,300)">
+                <rect width="110" height="80" rx="6" fill="#EFE7DD" stroke="#D8CFC2" />
+                <text x="55" y="46">PDF</text>
+              </g>
+              <g transform="translate(380,300)">
+                <rect width="110" height="80" rx="6" fill="#EFE7DD" stroke="#D8CFC2" />
+                <text x="55" y="46">PDF</text>
+              </g>
+              <g transform="translate(540,300)">
+                <rect width="110" height="80" rx="6" fill="#1B2A4A" stroke="#1B2A4A" />
+                <text x="55" y="46" fill="#fff">Exam</text>
+              </g>
+              <line x1="170" y1="340" x2="220" y2="340" stroke="#B5A99A" stroke-width="1.5" marker-end="url(#arr1)" />
+              <line x1="330" y1="340" x2="380" y2="340" stroke="#B5A99A" stroke-width="1.5" marker-end="url(#arr1)" />
+              <line x1="490" y1="340" x2="540" y2="340" stroke="#B5A99A" stroke-width="1.5" marker-end="url(#arr1)" />
+            </g>
+            <defs>
+              <marker id="arr1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                <path d="M0,0 L10,5 L0,10 z" fill="#B5A99A" />
+              </marker>
+            </defs>
+          </g>
+
+          <!-- Phase 2+: knowledge graph (radial, hub-and-spoke matching product UI) -->
+          <g id="phase2" style="opacity: 0;">
+            <!-- Spokes from hub to satellites (drawn first, behind nodes) -->
+            <g id="net-lines" fill="none" stroke="#3a4a66" stroke-width="1.6" stroke-linecap="round" opacity="0.55">
+              <path id="ln-0" d="M 360 320 L 220 170" />
+              <path id="ln-1" d="M 360 320 L 360 150" />
+              <path id="ln-2" d="M 360 320 L 500 170" />
+              <path id="ln-3" d="M 360 320 L 200 320" />
+              <path id="ln-4" d="M 360 320 L 520 320" />
+              <path id="ln-5" d="M 360 320 L 220 470" />
+              <path id="ln-6" d="M 360 320 L 360 490" />
+              <path id="ln-7" d="M 360 320 L 500 470" />
+            </g>
+
+            <!-- Satellite clusters: each is a colored node with mini-dots around it on short stems -->
+            <!-- colors cycle: green/orange/red matching reference -->
+            <g class="sat" id="sat-0" transform="translate(220 170)" data-color="#9BD89A"></g>
+            <g class="sat" id="sat-1" transform="translate(360 150)" data-color="#9BD89A"></g>
+            <g class="sat" id="sat-2" transform="translate(500 170)" data-color="#F5A06B"></g>
+            <g class="sat" id="sat-3" transform="translate(200 320)" data-color="#9BD89A"></g>
+            <g class="sat" id="sat-4" transform="translate(520 320)" data-color="#F5828A"></g>
+            <g class="sat" id="sat-5" transform="translate(220 470)" data-color="#F5828A"></g>
+            <g class="sat" id="sat-6" transform="translate(360 490)" data-color="#9BD89A"></g>
+            <g class="sat" id="sat-7" transform="translate(500 470)" data-color="#9BD89A"></g>
+
+            <!-- Satellite labels -->
+            <g id="sat-labels" font-family="Inter, system-ui" font-size="13" fill="#1B2A4A">
+              <text id="lbl-0" x="220" y="120" text-anchor="middle">Random Variables</text>
+              <text id="lbl-1" x="360" y="100" text-anchor="middle">ARIMA</text>
+              <text id="lbl-2" x="500" y="120" text-anchor="middle">Distributions</text>
+              <text id="lbl-3" x="135" y="324" text-anchor="end">Sampling</text>
+              <text id="lbl-4" x="585" y="324" text-anchor="start">Inference</text>
+              <text id="lbl-5" x="135" y="474" text-anchor="end">Bayesian</text>
+              <text id="lbl-6" x="360" y="540" text-anchor="middle">Regression</text>
+              <text id="lbl-7" x="585" y="474" text-anchor="start">Statistics</text>
+            </g>
+
+            <!-- Central hub (drawn on top) -->
+            <g id="n-core" class="net-node" transform="translate(360 320)">
+              <circle r="56" fill="#F5E47A" stroke="#1B2A4A" stroke-width="1.5" />
+              <text text-anchor="middle" y="6" font-family="Inter, system-ui" font-weight="600" font-size="16" fill="#1B2A4A">Neural nets</text>
+            </g>
+          </g>
+        </svg>
+      </div>
+    </div>
+
+    <div class="col" style="flex: 1;">
+      <div class="s2-meta anim-fade d-1200">
+        <div class="bulb">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4A90D9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 18h6" /><path d="M10 22h4" /><path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.1V18h6v-1.2c0-.8.4-1.6 1-2.1A7 7 0 0 0 12 2z"/>
+          </svg>
+        </div>
+        <blockquote>
+          <p>Concepts, not pages.</p>
+          <p>Every course becomes a graph of ideas, each one ready to be learned in the format that fits.</p>
+        </blockquote>
+      </div>
+    </div>
+  </div>
+
+  <div class="slide-num">02 / 10</div>
+</section>
+
+
+<!-- =====================================================
+     SLIDE 3 — How It Works
+     ===================================================== -->
+<section data-screen-label="03 How It Works">
+  <div class="brand-mark">Common Sage</div>
+  <h1 class="slide-title anim-fade">How it works.</h1>
+
+  <div style="margin-bottom: 28px;">
+    <div class="s3-row-label anim-fade">Educator</div>
+    <div class="s3-grid">
+      <div class="s3-step edu anim-up d-100">
+        <div class="n">1</div>
+        <h4>Upload</h4>
+        <p>Drop course PDFs, slides, lecture notes.</p>
+      </div>
+      <div class="s3-step edu anim-up d-200">
+        <div class="n">2</div>
+        <h4>Process</h4>
+        <p>AI builds the concept network and assets.</p>
+      </div>
+      <div class="s3-step edu anim-up d-300">
+        <div class="n">3</div>
+        <h4>Review</h4>
+        <p>Approve or refine every node and asset.</p>
+      </div>
+      <div class="s3-step edu anim-up d-400">
+        <div class="n">4</div>
+        <h4>Publish</h4>
+        <p>Release the network to the cohort.</p>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="s3-row-label anim-fade d-500">Student</div>
+    <div class="s3-grid">
+      <div class="s3-step stu anim-up d-500">
+        <div class="n">1</div>
+        <h4>Enroll</h4>
+        <p>Join the course inside the LMS or directly.</p>
+      </div>
+      <div class="s3-step stu anim-up d-600">
+        <div class="n">2</div>
+        <h4>Access</h4>
+        <p>Browse the network. Every concept ready.</p>
+      </div>
+      <div class="s3-step stu anim-up d-700">
+        <div class="n">3</div>
+        <h4>Choose</h4>
+        <p>Pick the format that fits: read, hear, drill.</p>
+      </div>
+      <div class="s3-step stu anim-up d-800">
+        <div class="n">4</div>
+        <h4>Grow</h4>
+        <p>Progress is tracked at concept level.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="s3-foot anim-fade d-1000">
+</div>
+
+  <div class="slide-num">03 / 10</div>
+</section>
+
+
+<!-- =====================================================
+     SLIDE 4 — What it produces
+     ===================================================== -->
+<section data-screen-label="04 What It Produces">
+  <div class="brand-mark">Common Sage</div>
+  <h1 class="slide-title anim-fade">One upload. Six formats.</h1>
+
+  <div class="s4-row">
+    <div class="s4-card anim-pop d-100">
+      <div class="ico"><svg width="22" height="28" viewBox="0 0 22 28" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 2 H14 L20 8 V26 H2 Z"/><path d="M14 2 V8 H20"/><path d="M5 14 H17 M5 18 H17 M5 22 H13"/></svg></div>
+      <h4>Summaries</h4>
+    </div>
+    <div class="s4-card anim-pop d-200">
+      <span class="live"></span>
+      <div class="ico"><svg width="24" height="28" viewBox="0 0 24 28" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="4" width="18" height="22" rx="2"/><path d="M8 4 V2 H16 V4"/><path d="M7 12 L10 15 L17 8"/><path d="M7 20 H17"/></svg></div>
+      <h4>Quizzes</h4>
+    </div>
+    <div class="s4-card anim-pop d-300">
+      <span class="live"></span>
+      <div class="ico"><svg width="28" height="22" viewBox="0 0 28 22" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="16" height="14" rx="2"/><rect x="9" y="6" width="16" height="14" rx="2" fill="#D4EEFF"/></svg></div>
+      <h4>Flashcards</h4>
+    </div>
+    <div class="s4-card anim-pop d-400">
+      <div class="ico"><svg width="28" height="24" viewBox="0 0 28 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 14 V11 a10 10 0 0 1 20 0 V14"/><rect x="3" y="14" width="6" height="8" rx="2"/><rect x="19" y="14" width="6" height="8" rx="2"/></svg></div>
+      <h4>Audio</h4>
+    </div>
+    <div class="s4-card anim-pop d-500">
+      <div class="ico"><svg width="28" height="20" viewBox="0 0 28 20" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="3" width="18" height="14" rx="2"/><path d="M20 8 L26 4 V16 L20 12 Z"/></svg></div>
+      <h4>Video</h4>
+    </div>
+    <div class="s4-card anim-pop d-600">
+      <div class="ico"><svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="14" cy="6" r="3"/><circle cx="6" cy="22" r="3"/><circle cx="22" cy="22" r="3"/><path d="M12 8 L8 19 M16 8 L20 19 M9 22 H19"/></svg></div>
+      <h4>Guided Practice</h4>
+    </div>
+  </div>
+
+  <div class="s4-legend anim-fade d-700">
+    <span class="dot-live"></span> live
+    <span class="dot-soon"></span> ships within 3 months
+  </div>
+
+  <div class="s4-diff">
+    <div class="d anim-up d-800">
+      <svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12 L10 18 L20 6"/></svg>
+      <div>
+        <h4>Educator control</h4>
+        <p>Every asset reviewed before students see it.</p>
+      </div>
+    </div>
+    <div class="d anim-up d-800">
+      <svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12 L10 18 L20 6"/></svg>
+      <div>
+        <h4>Course-aligned</h4>
+        <p>Built from your materials, around your curriculum.</p>
+      </div>
+    </div>
+    <div class="d anim-up d-800">
+      <svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12 L10 18 L20 6"/></svg>
+      <div>
+        <h4>Accessible by design</h4>
+        <p>Multimodal content serves diverse learners.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="slide-num">04 / 10</div>
+</section>
+
+
+<!-- =====================================================
+     SLIDE 5 — Comparison
+     ===================================================== -->
+<section data-screen-label="05 Comparison">
+  <div class="brand-mark">Common Sage</div>
+  <h1 class="slide-title smaller anim-fade">They generate content. We structure knowledge.</h1>
+
+  <table class="s5-table anim-fade d-200">
+    <thead>
+      <tr>
+        <th></th>
+        <th class="cs">Common Sage</th>
+        <th>NotebookLM</th>
+        <th>Studyflash</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>What it builds</td>
+        <td class="cs"><span class="mark good">●</span> A pre-built course graph</td>
+        <td><span class="mark bad">●</span> Answers on demand</td>
+        <td><span class="mark bad">●</span> Flashcards from notes</td>
+      </tr>
+      <tr>
+        <td>Course-wide coherence</td>
+        <td class="cs"><span class="mark good">●</span> Whole course, connected</td>
+        <td><span class="mark warn">●</span> Per notebook</td>
+        <td><span class="mark warn">●</span> Per upload, not connected</td>
+      </tr>
+      <tr>
+        <td>Educator review</td>
+        <td class="cs"><span class="mark good">●</span> Built in</td>
+        <td><span class="mark bad">●</span> None</td>
+        <td><span class="mark bad">●</span> None</td>
+      </tr>
+      <tr>
+        <td>Progress signal</td>
+        <td class="cs"><span class="mark good">●</span> Per concept</td>
+        <td><span class="mark bad">●</span> None</td>
+        <td><span class="mark warn">●</span> Per card</td>
+      </tr>
+      <tr>
+        <td>Swiss accessibility</td>
+        <td class="cs"><span class="mark good">●</span> BehiG / FADP by design</td>
+        <td><span class="mark bad">●</span> Generic global</td>
+        <td><span class="mark bad">●</span> Not a focus</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="s5-foot anim-fade d-700">Studyflash proved demand. NotebookLM proved the tech. We're building what neither provides.</div>
+
+  <div class="slide-num">05 / 10</div>
+</section>
+
+
+<!-- =====================================================
+     SLIDE 6 — Who we're building for
+     ===================================================== -->
+<section data-screen-label="06 Who We're Building For">
+  <div class="brand-mark">Common Sage</div>
+  <h1 class="slide-title anim-fade">Who we're building for.</h1>
+
+  <div class="s6-stats">
+    <div class="s6-stat anim-up d-100">
+      <div class="num"><span class="counter" data-to="38">38</span></div>
+      <div class="lab">Universities &amp; Fachhochschulen</div>
+    </div>
+    <div class="s6-stat anim-up d-200">
+      <div class="num"><span class="counter" data-to="280" data-prefix="~">~280</span></div>
+      <div class="lab">Gymnasien &amp; allgemeinbildende Schulen</div>
+    </div>
+    <div class="s6-stat anim-up d-300">
+      <div class="num"><span class="counter" data-to="388">388</span></div>
+      <div class="lab">Berufsfachschulen</div>
+    </div>
+  </div>
+
+  <div class="s6-summary anim-fade d-500">
+    ~700 target institutions · 88% publicly funded · Our 3-year target: 10 to 15
+  </div>
+
+  <div class="s6-reg anim-up d-700">
+    <div class="s6-reg-tag">Regulatory push</div>
+    <p>BehiG revision advancing through parliament (committee approved unanimously, March 2025). From January 2027, digital accessibility obligations extend to private institutions for the first time. Public schools are already obligated and failing. 80%+ of educational PDFs don't meet accessibility standards.</p>
+  </div>
+
+  <div class="slide-num">06 / 10</div>
+</section>
+
+
+<!-- =====================================================
+     SLIDE 7 — Business Model
+     ===================================================== -->
+<section data-screen-label="07 Business Model">
+  <div class="brand-mark">Common Sage</div>
+  <h1 class="slide-title anim-fade">Business model.</h1>
+  <div class="subtitle anim-fade d-100">B2B institutional SaaS that scales with courses.</div>
+
+  <div class="s7-tiers">
+    <div class="s7-tier anim-up d-200">
+      <div class="name">Pilot</div>
+      <div class="price">CHF 10K<span style="font-size:22px;color:var(--muted);font-weight:400;"> / yr</span></div>
+      <div class="scope">≤ 10 courses</div>
+    </div>
+    <div class="s7-tier anim-up d-300">
+      <div class="name">Department</div>
+      <div class="price">CHF 40K<span style="font-size:22px;color:var(--muted);font-weight:400;"> / yr</span></div>
+      <div class="scope">≤ 50 courses</div>
+    </div>
+    <div class="s7-tier anim-up d-400">
+      <div class="name">Campus</div>
+      <div class="price">CHF 150K<span style="font-size:22px;color:var(--muted);font-weight:400;"> / yr</span></div>
+      <div class="scope">≤ 250 courses</div>
+    </div>
+  </div>
+
+  <div class="s7-years">
+    <div class="s7-year neg anim-up d-600">
+      <div class="y">YEAR 1</div>
+      <div class="net">−58K</div>
+      <div class="meta">2 to 3 pilots <span class="rev">Revenue: CHF 35K</span></div>
+    </div>
+    <div class="s7-year neg anim-up d-700">
+      <div class="y">YEAR 2</div>
+      <div class="net">−44K</div>
+      <div class="meta">5 to 8 institutions <span class="rev">Revenue: CHF 200K</span></div>
+    </div>
+    <div class="s7-year pos anim-up d-800">
+      <div class="y">YEAR 3</div>
+      <div class="net">+195K</div>
+      <div class="meta">10 to 15 institutions <span class="rev">Revenue: CHF 650K</span></div>
+    </div>
+  </div>
+
+  <div class="slide-num">07 / 10</div>
+</section>
+
+
+<!-- =====================================================
+     SLIDE 8 — Team
+     ===================================================== -->
+<section data-screen-label="08 The Team">
+  <div class="brand-mark">Common Sage</div>
+  <h1 class="slide-title anim-fade">The team.</h1>
+
+  <div class="s8-team two">
+    <div class="s8-person anim-up d-100">
+      <div class="s8-avatar">J</div>
+      <h3>Jean</h3>
+      <div class="role">Co-Founder</div>
+      <p>Product and AI systems. Building the knowledge-network engine end-to-end.</p>
+      <span class="s8-badge">UZH</span>
+    </div>
+    <div class="s8-person anim-up d-300">
+      <div class="s8-avatar">L</div>
+      <h3>Lucio</h3>
+      <div class="role">Co-Founder</div>
+      <p>Pedagogy and institutional partnerships. Active inside the Swiss higher-ed system.</p>
+      <span class="s8-badge">UZH (active)</span>
+    </div>
+  </div>
+
+  <div class="s8-mission anim-up d-700">
+    <strong>Mission:</strong> make knowledge accessible to everyone, including people with visual, hearing, or learning impairments.
+  </div>
+
+  <div class="s8-foot anim-fade d-1000">Next hire: institutional partnerships lead with Swiss education sector experience.</div>
+
+  <div class="slide-num">08 / 10</div>
+</section>
+
+
+<!-- =====================================================
+     SLIDE 9 — Traction & Plan
+     ===================================================== -->
+<section data-screen-label="09 Traction &amp; Plan">
+  <div class="brand-mark">Common Sage</div>
+  <h1 class="slide-title anim-fade">Traction & plan.</h1>
+
+  <div class="s9-cols">
+    <div class="s9-col done anim-left d-100">
+      <h3>Done</h3>
+      <ul>
+        <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12 L10 18 L20 6"/></svg>Core AI pipeline built</li>
+        <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12 L10 18 L20 6"/></svg>Knowledge network functional</li>
+        <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12 L10 18 L20 6"/></svg>Flashcards + MCQs working</li>
+        <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12 L10 18 L20 6"/></svg>Team formed</li>
+        <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12 L10 18 L20 6"/></svg>VK application accepted</li>
+      </ul>
+    </div>
+    <div class="s9-col now anim-up d-400">
+      <h3>This week</h3>
+      <ul>
+        <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12 L10 18 L20 6"/></svg>MVP goes online</li>
+        <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12 L10 18 L20 6"/></svg>Meeting: KITS-Fachstelle ZH</li>
+        <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12 L10 18 L20 6"/></svg>First institutional demo</li>
+        <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12 L10 18 L20 6"/></svg>Validate demand</li>
+      </ul>
+    </div>
+    <div class="s9-col next anim-right d-700">
+      <h3>Next 3 months</h3>
+      <ul>
+        <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12 L10 18 L20 6"/></svg>First pilot onboarded</li>
+        <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12 L10 18 L20 6"/></svg>Audio + summaries shipped</li>
+        <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12 L10 18 L20 6"/></svg>Case study produced</li>
+        <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12 L10 18 L20 6"/></svg>FH outreach begins</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="slide-num">09 / 10</div>
+</section>
+
+
+<!-- =====================================================
+     SLIDE 10 — The Ask
+     ===================================================== -->
+<section data-screen-label="10 The Ask" class="s10">
+  <div class="brand-mark">Common Sage</div>
+  <div class="s10-inner">
+    <div class="ask-label anim-fade">THE ASK</div>
+    <h1 class="anim-pop d-200">CHF 10,000</h1>
+
+    <ul>
+      <li class="anim-fade d-500"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12 L10 18 L20 6"/></svg>Complete the product end-to-end</li>
+      <li class="anim-fade d-700"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12 L10 18 L20 6"/></svg>First pilot by Q3 2026, starting with KITS Zürich</li>
+      <li class="anim-fade d-900"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12 L10 18 L20 6"/></svg>Case study with measurable learning outcomes</li>
+      <li class="anim-fade d-1000"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12 L10 18 L20 6"/></svg>2 to 3 paying institutions in Year 1</li>
+    </ul>
+
+    <div class="vision anim-fade d-1200">"Every course, a living knowledge network."</div>
+    <div class="signed">Jean · Lucio · Common Sage</div>
+  </div>
+  <div class="slide-num">10 / 10</div>
+</section>
+
+</deck-stage>
+
+
+<script>
+/* =========================================================
+   Slide-aware behaviour:
+   - Marks the current slide with data-current="true" so CSS
+     animations replay on slide change.
+   - Drives the slide-2 knowledge network animation.
+   - Drives the slide-6 number counters.
+   ========================================================= */
+(function () {
+  const stage = document.querySelector('deck-stage');
+  if (!stage) return;
+  const sections = Array.from(stage.querySelectorAll(':scope > section'));
+
+  let currentIdx = 0;
+  function getCurrentIdx() {
+    // deck_stage hash is '#N' (1-based)
+    const m = (location.hash || '').match(/^#(\d+)$/);
+    if (m) return Math.max(0, parseInt(m[1], 10) - 1);
+    return 0;
+  }
+
+  function markCurrent(idx) {
+    if (typeof idx !== 'number') idx = getCurrentIdx();
+    currentIdx = idx;
+    sections.forEach((s, i) => {
+      if (i === idx) s.setAttribute('data-current', 'true');
+      else s.removeAttribute('data-current');
+    });
+    if (idx === 1) runNetwork();
+    if (idx === 5) runCounters();
+  }
+
+  // ---------- Slide 2: knowledge network animation ----------
+  function buildSatellites() {
+    // Procedurally add the colored circle + radiating mini-dots to each satellite.
+    // Idempotent: only builds once per satellite.
+    const sats = document.querySelectorAll('#phase2 .sat');
+    sats.forEach((sat, idx) => {
+      if (sat.dataset.built === '1') return;
+      const color = sat.getAttribute('data-color') || '#9BD89A';
+      const svgNS = 'http://www.w3.org/2000/svg';
+      // main circle
+      const c = document.createElementNS(svgNS, 'circle');
+      c.setAttribute('r', '26');
+      c.setAttribute('fill', color);
+      c.setAttribute('stroke', '#1B2A4A');
+      c.setAttribute('stroke-width', '1.2');
+      // radiating mini-dots (8 around)
+      const N = 8;
+      const stems = document.createElementNS(svgNS, 'g');
+      stems.setAttribute('stroke', '#3a4a66');
+      stems.setAttribute('stroke-width', '1');
+      stems.setAttribute('opacity', '0.7');
+      const dots = document.createElementNS(svgNS, 'g');
+      dots.setAttribute('fill', '#1B2A4A');
+      // Stagger so dots aren't all aligned across satellites
+      const phase = (idx * 0.37) % 1;
+      for (let i = 0; i < N; i++) {
+        const a = (i / N) * Math.PI * 2 + phase * Math.PI * 2;
+        const r1 = 28, r2 = 44;
+        const x1 = Math.cos(a) * r1, y1 = Math.sin(a) * r1;
+        const x2 = Math.cos(a) * r2, y2 = Math.sin(a) * r2;
+        const ln = document.createElementNS(svgNS, 'line');
+        ln.setAttribute('x1', x1.toFixed(1));
+        ln.setAttribute('y1', y1.toFixed(1));
+        ln.setAttribute('x2', x2.toFixed(1));
+        ln.setAttribute('y2', y2.toFixed(1));
+        stems.appendChild(ln);
+        const d = document.createElementNS(svgNS, 'circle');
+        d.setAttribute('cx', x2.toFixed(1));
+        d.setAttribute('cy', y2.toFixed(1));
+        d.setAttribute('r', '2.6');
+        dots.appendChild(d);
+      }
+      // Order: stems behind, then circle, then dots on top
+      sat.appendChild(stems);
+      sat.appendChild(c);
+      sat.appendChild(dots);
+      sat.dataset.built = '1';
+    });
+  }
+
+  function runNetwork() {
+    const svg = document.getElementById('network-svg');
+    if (!svg) return;
+    buildSatellites();
+
+    const phase1 = svg.querySelector('#phase1');
+    const phase2 = svg.querySelector('#phase2');
+    const lines  = Array.from(svg.querySelectorAll('#net-lines path'));
+    const sats   = Array.from(svg.querySelectorAll('#phase2 .sat'));
+    const labels = Array.from(svg.querySelectorAll('#sat-labels text'));
+    const core   = svg.querySelector('#n-core');
+
+    // Reset
+    phase1.style.transition = 'none';
+    phase1.style.opacity = '0';
+    phase2.style.transition = 'none';
+    phase2.style.opacity = '0';
+    [core, ...sats].forEach(n => {
+      n.style.transformOrigin = 'center';
+      n.style.transition = 'none';
+      n.style.opacity = '0';
+      const baseT = (n.getAttribute('transform') || '').replace(/\s*scale\([^)]+\)/g, '');
+      n.style.transform = baseT + ' scale(0.4)';
+    });
+    lines.forEach(p => {
+      const len = p.getTotalLength();
+      p.style.transition = 'none';
+      p.style.strokeDasharray = len;
+      p.style.strokeDashoffset = len;
+    });
+    labels.forEach(l => { l.style.transition = 'none'; l.style.opacity = '0'; });
+
+    // Force reflow
+    void svg.getBoundingClientRect();
+
+    // Phase 1 -> Phase 2
+    phase1.style.transition = 'opacity .4s ease';
+    phase1.style.opacity = '1';
+
+    setTimeout(() => {
+      phase1.style.transition = 'opacity .5s ease';
+      phase1.style.opacity = '0';
+      phase2.style.transition = 'opacity .5s ease';
+      phase2.style.opacity = '1';
+
+      // Hub appears first
+      setTimeout(() => animNode(core), 100);
+      // Then satellites + their lines, in sequence around the ring
+      sats.forEach((sat, i) => {
+        const t = 600 + i * 130;
+        setTimeout(() => {
+          animLine(lines[i]);
+          animNode(sat);
+          const lbl = labels[i];
+          if (lbl) {
+            lbl.style.transition = 'opacity .4s ease';
+            lbl.style.opacity = '1';
+          }
+        }, t);
+      });
+    }, 1000);
+  }
+
+  function animNode(n, delay) {
+    if (!n) return;
+    const baseT = (n.getAttribute('transform') || '').replace(/ scale\([^)]+\)/g, '');
+    n.style.transition = 'opacity .5s ease, transform .6s cubic-bezier(.2,.7,.3,1.2)';
+    n.style.opacity = '1';
+    n.style.transform = baseT + ' scale(1)';
+  }
+  function animLine(p) {
+    if (!p) return;
+    p.style.transition = 'stroke-dashoffset .7s ease';
+    p.style.strokeDashoffset = '0';
+  }
+
+  // ---------- Slide 6: number counters ----------
+  function runCounters() {
+    const els = document.querySelectorAll('section[data-current="true"] .counter');
+    els.forEach(el => {
+      const to = parseFloat(el.dataset.to || '0');
+      const prefix = el.dataset.prefix || '';
+      const suffix = el.dataset.suffix || '';
+      const dur = 1400;
+      const t0 = performance.now();
+      function tick(now) {
+        const t = Math.min(1, (now - t0) / dur);
+        const eased = 1 - Math.pow(1 - t, 3);
+        const v = to * eased;
+        let display;
+        if (to >= 100) display = Math.round(v).toString();
+        else if (Number.isInteger(to)) display = Math.round(v).toString();
+        else display = v.toFixed(1);
+        el.textContent = prefix + display + suffix;
+        if (t < 1) requestAnimationFrame(tick);
+      }
+      el.textContent = prefix + '0' + suffix;
+      requestAnimationFrame(tick);
+    });
+  }
+
+  window.addEventListener('hashchange', () => markCurrent());
+  // Also catch the deck_stage's slide change message (authoritative)
+  window.addEventListener('message', (e) => {
+    if (e.data && typeof e.data.slideIndexChanged === 'number') {
+      requestAnimationFrame(() => markCurrent(e.data.slideIndexChanged));
+    }
+  });
+  // Initial
+  setTimeout(() => markCurrent(), 50);
+})();
+</script>
+
+</body>
+</html>
