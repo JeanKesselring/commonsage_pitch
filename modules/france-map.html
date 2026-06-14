@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Geography of France map quiz</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geologica:wght@400;500;600&family=Miriam+Libre:wght@700&display=swap" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
+<style>
+  :root{
+    --ink:#070707; --muted:#5b5b5b; --primary:#87d3ff; --primary-dark:#354dad;
+    --surface:#dbf8ff; --elevated:#ecfcff; --border:#cfcabf;
+    --success:#2fa12d; --success-bg:#e6fbe5; --error:#e05555; --error-bg:#ffecec;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;height:100%;}
+  body{font-family:"Geologica",system-ui,sans-serif;color:var(--ink);overflow:hidden;background:var(--elevated);}
+  #map{position:absolute;inset:0;}
+  .maplibregl-ctrl-attrib{font-size:9px;}
+  .bar{
+    position:absolute;top:0;left:0;right:0;z-index:5;
+    background:rgba(236,252,255,.94);backdrop-filter:blur(4px);
+    border-bottom:1px solid var(--border);padding:10px 14px;display:flex;align-items:center;gap:10px;
+  }
+  .bar .q{flex:1;min-width:0;}
+  .bar .q .step{font-size:10px;font-weight:600;letter-spacing:.04em;color:var(--primary-dark);text-transform:uppercase;}
+  .bar .q .txt{font-family:"Miriam Libre",serif;font-weight:700;color:var(--ink);font-size:clamp(12px,2.4vw,16px);line-height:1.15;}
+  .bar .score{flex-shrink:0;font-weight:600;font-size:12px;color:var(--primary-dark);background:var(--surface);
+              border:1px solid var(--border);border-radius:999px;padding:4px 11px;}
+  .fb{
+    position:absolute;left:14px;right:14px;bottom:60px;z-index:6;
+    border-radius:12px;padding:10px 14px;font-size:13px;font-weight:500;line-height:1.35;
+    box-shadow:0 10px 28px -14px rgba(53,77,173,.5);opacity:0;transform:translateY(8px);
+    transition:opacity .2s,transform .2s;pointer-events:none;
+  }
+  .fb.show{opacity:1;transform:none;}
+  .fb.ok{background:var(--success-bg);border:1px solid var(--success);color:#1f7a1d;}
+  .fb.no{background:var(--error-bg);border:1px solid var(--error);color:#b23c3c;}
+  .actions{position:absolute;right:14px;bottom:14px;z-index:6;display:flex;gap:8px;}
+  button{
+    font-family:inherit;font-weight:600;font-size:13px;border-radius:999px;padding:9px 20px;cursor:pointer;
+    border:1px solid var(--primary-dark);background:var(--primary-dark);color:#fff;transition:filter .15s,opacity .15s;
+  }
+  button:hover{filter:brightness(1.08);}
+  button:disabled{opacity:.45;cursor:not-allowed;}
+  .tip{position:absolute;left:14px;bottom:16px;z-index:6;font-size:11px;color:var(--muted);
+       background:rgba(255,255,255,.8);border-radius:8px;padding:4px 8px;pointer-events:none;}
+</style>
+</head>
+<body>
+  <div id="map"></div>
+  <div class="bar">
+    <div class="q"><div class="step" id="step"></div><div class="txt" id="qtext"></div></div>
+    <div class="score" id="score">0 / 6</div>
+  </div>
+  <div class="fb" id="fb"></div>
+  <div class="tip" id="tip">Click the map to drop your answer</div>
+  <div class="actions">
+    <button id="check" disabled>Check</button>
+    <button id="next" class="hidden" style="display:none;">Next</button>
+  </div>
+
+<script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script>
+// ── Real quiz data (map_click_quiz / Geography of France) ───────────────────
+const QUESTIONS = [
+  { type:"point",   q:"Locate the capital city, Paris.",        lat:48.8566, lng:2.3522, label:"Paris",   tol:150 },
+  { type:"country", q:"Which country is France?",               lat:46.6033, lng:2.4463, label:"France",   iso:"FRA" },
+  { type:"point",   q:"Click on the port city of Marseille.",   lat:43.2965, lng:5.3698, label:"Marseille",tol:150 },
+  { type:"country", q:"Where is the island of Corsica?",        lat:42.0396, lng:9.0129, label:"Corsica",  iso:"FRA" },
+  { type:"point",   q:"Locate the city of Bordeaux.",           lat:44.8378, lng:-0.5792,label:"Bordeaux", tol:150 },
+  { type:"point",   q:"Locate the city of Lyon.",               lat:45.7640, lng:4.8357, label:"Lyon",     tol:150 },
+];
+// France polygons (lng,lat) - extracted from the product's world_data (FRA)
+const FRA = [
+  [[-51.7,4.2],[-52.2,3.2],[-52.6,2.5],[-52.9,2.1],[-53.4,2.1],[-53.6,2.3],[-53.8,2.4],[-54.1,2.1],[-54.5,2.3],[-54.3,2.7],[-54.2,3.2],[-54,3.6],[-54.4,4.2],[-54.5,4.9],[-54,5.8],[-53.6,5.6],[-52.9,5.4],[-51.8,4.6],[-51.7,4.2]],
+  [[6.2,49.5],[6.7,49.2],[8.1,49],[7.6,48.3],[7.5,47.6],[7.2,47.4],[6.7,47.5],[6.8,47.3],[6,46.7],[6,46.3],[6.5,46.4],[6.8,46],[6.8,45.7],[7.1,45.3],[6.7,45],[7,44.3],[7.5,44.1],[7.4,43.7],[6.5,43.1],[4.6,43.4],[3.1,43.1],[3,42.5],[1.8,42.3],[0.7,42.8],[0.3,42.6],[-1.5,43],[-1.9,43.4],[-1.4,44],[-1.2,46],[-2.2,47.1],[-3,47.6],[-4.5,48],[-4.6,48.7],[-3.3,48.9],[-1.6,48.6],[-1.9,49.8],[-1,49.3],[1.3,50.1],[1.6,50.9],[2.5,51.1],[2.7,50.8],[3.1,50.8],[3.6,50.4],[4.3,49.9],[4.8,50],[5.7,49.5],[5.9,49.4],[6.2,49.5]],
+  [[8.7,42.6],[9.4,43],[9.6,42.2],[9.2,41.4],[8.8,41.6],[8.5,42.3],[8.7,42.6]]
+];
+
+// ── Geometry helpers ────────────────────────────────────────────────────────
+function haversine(a,b){ const R=6371,toR=x=>x*Math.PI/180;
+  const dLat=toR(b.lat-a.lat),dLng=toR(b.lng-a.lng);
+  const s=Math.sin(dLat/2)**2+Math.cos(toR(a.lat))*Math.cos(toR(b.lat))*Math.sin(dLng/2)**2;
+  return 2*R*Math.asin(Math.sqrt(s)); }
+function inRing(lng,lat,ring){ let inside=false;
+  for(let i=0,j=ring.length-1;i<ring.length;j=i++){ const xi=ring[i][0],yi=ring[i][1],xj=ring[j][0],yj=ring[j][1];
+    if(((yi>lat)!==(yj>lat)) && (lng < (xj-xi)*(lat-yi)/(yj-yi)+xi)) inside=!inside; }
+  return inside; }
+function inFrance(lng,lat){ return FRA.some(r=>inRing(lng,lat,r)); }
+
+// ── Map ──────────────────────────────────────────────────────────────────────
+const map = new maplibregl.Map({
+  container:"map",
+  style:{ version:8,
+    sources:{ carto:{ type:"raster", tileSize:256,
+      tiles:["https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png","https://b.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png","https://c.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png"],
+      attribution:"© OpenStreetMap © CARTO" } },
+    layers:[{ id:"carto", type:"raster", source:"carto" }] },
+  center:[2.6,46.6], zoom:4.3, attributionControl:{compact:true}
+});
+map.addControl(new maplibregl.NavigationControl({showCompass:false}),"bottom-right");
+
+let qi=0, score=0, guess=null, phase="waiting", guessMarker=null, answerMarker=null;
+
+map.on("load",()=>{
+  map.addSource("fra",{ type:"geojson", data:{ type:"Feature", geometry:{ type:"MultiPolygon", coordinates: FRA.map(r=>[r]) } } });
+  map.addLayer({ id:"fra-fill", type:"fill", source:"fra", paint:{"fill-color":"#87d3ff","fill-opacity":0} });
+  map.addLayer({ id:"fra-line", type:"line", source:"fra", paint:{"line-color":"#354dad","line-width":0} });
+  loadQ();
+});
+
+const $=id=>document.getElementById(id);
+function loadQ(){
+  const q=QUESTIONS[qi];
+  $("step").textContent=`Question ${qi+1} of ${QUESTIONS.length}`;
+  $("qtext").textContent=q.q;
+  $("tip").textContent = q.type==="country" ? "Click anywhere inside the country" : "Click the map to drop your pin";
+  $("tip").style.display="block";
+  phase="waiting"; guess=null;
+  if(guessMarker){ guessMarker.remove(); guessMarker=null; }
+  if(answerMarker){ answerMarker.remove(); answerMarker=null; }
+  map.setPaintProperty("fra-fill","fill-opacity",0);
+  map.setPaintProperty("fra-line","line-width",0);
+  hideFb();
+  $("check").style.display=""; $("check").disabled=true;
+  $("next").style.display="none";
+}
+function hideFb(){ const f=$("fb"); f.className="fb"; }
+function showFb(ok,msg){ const f=$("fb"); f.className="fb show "+(ok?"ok":"no"); f.textContent=msg; }
+
+map.on("click",(e)=>{
+  if(phase!=="waiting") return;
+  guess={ lng:e.lngLat.lng, lat:e.lngLat.lat };
+  if(guessMarker) guessMarker.remove();
+  guessMarker=new maplibregl.Marker({color:"#354dad"}).setLngLat([guess.lng,guess.lat]).addTo(map);
+  $("check").disabled=false;
+  $("tip").style.display="none";
+});
+
+$("check").addEventListener("click",()=>{
+  if(!guess) return;
+  const q=QUESTIONS[qi]; let ok=false, msg="";
+  if(q.type==="country"){
+    ok=inFrance(guess.lng,guess.lat);
+    map.setPaintProperty("fra-fill","fill-opacity",0.3);
+    map.setPaintProperty("fra-line","line-width",2);
+    msg = ok ? `Correct. That's ${q.label==="Corsica"?"Corsica, part of France":"France"}.`
+             : `Not quite. That point is outside France. ${q.label} is highlighted.`;
+  } else {
+    const d=haversine(guess,{lat:q.lat,lng:q.lng});
+    ok = d <= (q.tol||150);
+    answerMarker=new maplibregl.Marker({color: ok?"#2fa12d":"#e05555"}).setLngLat([q.lng,q.lat])
+      .setPopup(new maplibregl.Popup({offset:18,closeButton:false}).setText(q.label)).addTo(map);
+    answerMarker.togglePopup();
+    msg = ok ? `Nailed it. ${Math.round(d)} km from ${q.label}.`
+             : `${Math.round(d)} km off. ${q.label} is marked in red.`;
+  }
+  if(ok) score++;
+  $("score").textContent=`${score} / ${QUESTIONS.length}`;
+  showFb(ok,msg);
+  phase="feedback";
+  $("check").style.display="none";
+  $("next").style.display="";
+  $("next").textContent = qi===QUESTIONS.length-1 ? "See result" : "Next";
+});
+
+$("next").addEventListener("click",()=>{
+  if(qi===QUESTIONS.length-1){
+    $("step").textContent="Complete";
+    $("qtext").textContent = `You scored ${score} / ${QUESTIONS.length}`;
+    showFb(score>=4, score>=4 ? "Strong geography! Tap Restart to try again." : "Give it another go. Tap Restart.");
+    $("next").textContent="Restart"; phase="done";
+    $("next").onclick=()=>{ qi=0; score=0; $("score").textContent=`0 / ${QUESTIONS.length}`; $("next").onclick=null; loadQ(); };
+    if(guessMarker){guessMarker.remove();guessMarker=null;} if(answerMarker){answerMarker.remove();answerMarker=null;}
+    map.setPaintProperty("fra-fill","fill-opacity",0); map.setPaintProperty("fra-line","line-width",0);
+    map.flyTo({center:[2.6,46.6],zoom:4.3});
+    return;
+  }
+  qi++; loadQ();
+});
+</script>
+</body>
+</html>

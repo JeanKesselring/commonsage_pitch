@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>3D Heart</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geologica:wght@400;600&family=Miriam+Libre:wght@700&display=swap" rel="stylesheet" />
+<style>
+  :root{ --primary-dark:#354dad; --muted:#5b5b5b; --elevated:#ecfcff; }
+  *{box-sizing:border-box;}
+  html,body{margin:0;height:100%;}
+  body{font-family:"Geologica",system-ui,sans-serif;overflow:hidden;
+       background:radial-gradient(120% 120% at 50% 30%, #ffffff 0%, var(--elevated) 70%, #dbf8ff 100%);}
+  #wrap{position:relative;width:100%;height:100%;}
+  canvas{display:block;}
+  .head{position:absolute;top:12px;left:16px;z-index:3;pointer-events:none;}
+  .head h2{font-family:"Miriam Libre",serif;font-weight:700;color:var(--primary-dark);margin:0;font-size:clamp(15px,3vw,21px);}
+  .head p{margin:2px 0 0;font-size:clamp(10px,1.8vw,12px);color:var(--muted);}
+  .attr{position:absolute;bottom:8px;left:16px;font-size:10px;color:rgba(0,0,0,.45);z-index:3;}
+  .hint{position:absolute;bottom:8px;right:14px;font-size:11px;color:var(--muted);opacity:.7;z-index:3;}
+  .state{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;z-index:2;color:var(--muted);font-size:13px;}
+  .state img{max-width:55%;max-height:55%;object-fit:contain;opacity:.18;position:absolute;}
+  .spin{width:26px;height:26px;border:3px solid #cdd6ea;border-top-color:var(--primary-dark);border-radius:50%;animation:sp 1s linear infinite;}
+  @keyframes sp{to{transform:rotate(360deg);}}
+  .hidden{display:none!important;}
+</style>
+</head>
+<body>
+  <div id="wrap">
+    <div class="head"><h2>Human Heart</h2><p>Drag to rotate · scroll to zoom</p></div>
+    <div class="state" id="state"><div class="spin"></div><span>Loading 3D model…</span></div>
+    <div class="attr">© neshallads · CC BY 4.0</div>
+    <div class="hint">interactive</div>
+  </div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+}}
+</script>
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { STLLoader } from "three/addons/loaders/STLLoader.js";
+
+const MODEL_URL = "https://upload.wikimedia.org/wikipedia/commons/d/d2/3D_model_of_a_human_heart.stl";
+const THUMB_URL = "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d2/3D_model_of_a_human_heart.stl/500px-3D_model_of_a_human_heart.stl.png";
+const COLOR = "#FF9FA8";
+
+const wrap = document.getElementById("wrap");
+const stateEl = document.getElementById("state");
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(50, wrap.clientWidth / wrap.clientHeight, 0.1, 100);
+camera.position.set(0, 0, 4);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(wrap.clientWidth, wrap.clientHeight);
+wrap.appendChild(renderer.domElement);
+
+// Lighting rig - mirrors the source component (ambient + 4 directional)
+scene.add(new THREE.HemisphereLight(0xffffff, 0x99aacc, 0.35));
+const lights = [
+  [[5,8,3], 2.2, 0xFFE0B5],
+  [[-5,2,2], 0.65, 0xB8D4FF],
+  [[-2,4,-6], 1.3, 0xFFE8D0],
+  [[0,-6,2], 0.25, 0xC8E0FF],
+];
+for (const [pos, intensity, color] of lights) {
+  const l = new THREE.DirectionalLight(color, intensity);
+  l.position.set(...pos);
+  scene.add(l);
+}
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.enablePan = false;
+controls.autoRotate = true;
+controls.autoRotateSpeed = 1.5;
+controls.minDistance = 2;
+controls.maxDistance = 8;
+
+const loader = new STLLoader();
+loader.load(
+  MODEL_URL,
+  (geometry) => {
+    geometry.computeBoundingBox();
+    geometry.center();
+    const b = geometry.boundingBox;
+    const maxDim = Math.max(b.max.x - b.min.x, b.max.y - b.min.y, b.max.z - b.min.z);
+    const scale = maxDim > 0 ? 2 / maxDim : 1;
+    const mat = new THREE.MeshStandardMaterial({ color: COLOR, roughness: 0.92, metalness: 0.0 });
+    const mesh = new THREE.Mesh(geometry, mat);
+    mesh.scale.setScalar(scale);
+    scene.add(mesh);
+    stateEl.classList.add("hidden");
+  },
+  undefined,
+  () => { // error → thumbnail fallback
+    stateEl.innerHTML = `<img src="${THUMB_URL}" alt="Human heart" /><span>3D model unavailable, preview shown</span>`;
+  }
+);
+
+function resize() {
+  const w = wrap.clientWidth, h = wrap.clientHeight;
+  camera.aspect = w / h; camera.updateProjectionMatrix();
+  renderer.setSize(w, h);
+}
+window.addEventListener("resize", resize);
+
+(function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+  renderer.render(scene, camera);
+})();
+</script>
+</body>
+</html>

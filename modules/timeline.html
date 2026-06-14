@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Order the timeline (History of France)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geologica:wght@400;500;600&family=Miriam+Libre:wght@700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --ink:#070707; --muted:#5b5b5b; --primary:#87d3ff; --primary-dark:#354dad;
+    --surface:#dbf8ff; --elevated:#ecfcff; --border:#d7d2cc;
+    --success:#74e172; --success-bg:#e6fbe5; --error:#ff8787; --error-bg:#ffecec;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;height:100%;}
+  body{font-family:"Geologica",system-ui,sans-serif;color:var(--ink);background:var(--elevated);
+       display:flex;flex-direction:column;overflow:hidden;padding:13px 14px;}
+  .head{flex-shrink:0;}
+  .head h2{font-family:"Miriam Libre",serif;font-weight:700;color:var(--primary-dark);
+           margin:0;font-size:clamp(14px,4vw,19px);line-height:1.1;}
+  .head .instr{display:block;margin-top:3px;font-size:clamp(9px,2.6vw,11px);color:var(--muted);}
+  .list{flex:1;min-height:0;display:flex;flex-direction:column;gap:7px;margin:10px 0;overflow:hidden;}
+  .card{
+    flex:1;min-height:0;background:#fff;border:1px solid var(--border);border-radius:11px;
+    padding:8px 11px;display:flex;align-items:center;gap:10px;cursor:grab;
+    transition:border-color .15s, box-shadow .15s;box-shadow:0 5px 14px -12px rgba(53,77,173,.4);
+  }
+  .card:active{cursor:grabbing;}
+  .card.drag{opacity:.4;}
+  .card.over{border-color:var(--primary);box-shadow:0 0 0 3px rgba(135,211,255,.45);}
+  .card .pos{font-family:"Miriam Libre",serif;font-weight:700;color:var(--primary);font-size:18px;line-height:1;width:20px;text-align:center;flex-shrink:0;}
+  .card .body{min-width:0;flex:1;}
+  .card .date{font-weight:600;font-size:clamp(10px,2.7vw,12px);color:var(--primary-dark);}
+  .card .label{font-size:clamp(10px,2.7vw,12px);line-height:1.25;color:var(--ink);}
+  .card .grip{color:#c7c0b8;font-size:13px;letter-spacing:1px;flex-shrink:0;}
+  .card.correct{border-color:var(--success);background:var(--success-bg);}
+  .card.correct .pos{color:#2fa12d;}
+  .card.wrong{border-color:var(--error);background:var(--error-bg);}
+  .card.wrong .pos{color:#e05555;}
+  .foot{display:flex;align-items:center;gap:9px;flex-shrink:0;flex-wrap:wrap;}
+  button{
+    font-family:inherit;font-weight:600;font-size:12.5px;border-radius:999px;padding:7px 16px;cursor:pointer;
+    border:1px solid var(--primary-dark);background:var(--primary-dark);color:#fff;transition:filter .15s;
+  }
+  button:hover{filter:brightness(1.08);}
+  button.ghost{background:transparent;color:var(--primary-dark);}
+  .msg{font-size:12px;font-weight:600;}
+  .msg.ok{color:#2fa12d;} .msg.no{color:#e05555;}
+</style>
+</head>
+<body>
+  <div class="head">
+    <h2>Order the timeline</h2>
+    <span class="instr">Drag the events into chronological order, earliest at the top</span>
+  </div>
+  <div class="list" id="list"></div>
+  <div class="foot">
+    <button id="check">Check order</button>
+    <button id="shuffle" class="ghost">Shuffle</button>
+    <span class="msg" id="msg"></span>
+  </div>
+
+<script>
+// Real module data, timeline_drag_exercise, "History of France"
+const EVENTS = [
+  { label:"Establishment of Fifth Republic", date:"October 1958",  order:6 },
+  { label:"Coronation of Charlemagne",       date:"December 800",  order:2 },
+  { label:"Roman Conquest of Gaul",          date:"58 to 50 BC",   order:1 },
+  { label:"World War I and II",              date:"1914 to 1945",  order:5 },
+  { label:"Napoleonic Empire Established",   date:"May 1804",      order:4 },
+  { label:"The French Revolution",           date:"July 1789",     order:3 },
+];
+const BY_KEY = Object.fromEntries(EVENTS.map(e=>[e.label,e]));
+const list = document.getElementById("list");
+const msg = document.getElementById("msg");
+let order = [];
+
+function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+
+function render(){
+  list.innerHTML="";
+  order.forEach((ev,i)=>{
+    const c=document.createElement("div");
+    c.className="card"; c.draggable=true;
+    c.innerHTML=`<span class="pos">${i+1}</span>`+
+                `<div class="body"><div class="date">${ev.date}</div><div class="label">${ev.label}</div></div>`+
+                `<span class="grip">⠿</span>`;
+    list.appendChild(c);
+  });
+  bindDnD();
+}
+function renumber(){ [...list.children].forEach((c,i)=>{ c.classList.remove("correct","wrong"); c.querySelector(".pos").textContent=i+1; }); msg.textContent=""; msg.className="msg"; }
+
+function bindDnD(){
+  let dragEl=null;
+  list.querySelectorAll(".card").forEach(card=>{
+    card.addEventListener("dragstart",e=>{ dragEl=card; card.classList.add("drag"); e.dataTransfer.effectAllowed="move"; });
+    card.addEventListener("dragend",()=>{ card.classList.remove("drag"); list.querySelectorAll(".card").forEach(c=>c.classList.remove("over")); renumber(); });
+    card.addEventListener("dragover",e=>{ e.preventDefault();
+      list.querySelectorAll(".card").forEach(c=>c.classList.remove("over"));
+      if(card===dragEl) return; card.classList.add("over");
+      const r=card.getBoundingClientRect();
+      const before = e.clientY < r.top + r.height/2;
+      list.insertBefore(dragEl, before?card:card.nextSibling);
+    });
+  });
+}
+
+document.getElementById("check").addEventListener("click",()=>{
+  const cards=[...list.querySelectorAll(".card")];
+  let right=0;
+  cards.forEach((c,i)=>{
+    const ev=BY_KEY[c.querySelector(".label").textContent];
+    const ok = ev.order === i+1;
+    c.classList.toggle("correct",ok); c.classList.toggle("wrong",!ok);
+    if(ok) right++;
+  });
+  if(right===EVENTS.length){ msg.textContent="✓ Perfect, fully chronological!"; msg.className="msg ok"; }
+  else { msg.textContent=`${right} / ${EVENTS.length} in place`; msg.className="msg no"; }
+});
+document.getElementById("shuffle").addEventListener("click",()=>{ order=shuffle([...EVENTS]); render(); });
+
+order = shuffle([...EVENTS]); render();
+</script>
+</body>
+</html>

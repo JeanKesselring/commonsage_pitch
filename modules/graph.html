@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Knowledge graph</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geologica:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root{ --ink:#1d1d1d; --muted:#5b5b5b; --primary-dark:#354dad; --stroke:#4A4A4A; --canvas:#e9f4fb; }
+  *{box-sizing:border-box;}
+  html,body{margin:0;height:100%;}
+  body{font-family:"Geologica",system-ui,sans-serif;background:var(--canvas);overflow:hidden;}
+  svg{display:block;width:100%;height:100%;}
+  .node{cursor:pointer;}
+  .teardrop{stroke:var(--stroke);stroke-width:2;vector-effect:non-scaling-stroke;transition:filter .12s;}
+  .edge{stroke:var(--stroke);stroke-width:1.6;fill:none;opacity:.6;vector-effect:non-scaling-stroke;}
+  .node.dim{opacity:.25;transition:opacity .15s;}
+  .edge.dim{opacity:.12;transition:opacity .15s;}
+  .focus-lbl{font-weight:600;fill:#222;text-anchor:middle;pointer-events:none;}
+  .chip rect{fill:rgba(255,255,255,.86);stroke:rgba(53,77,173,.18);stroke-width:1;}
+  .chip text{font-weight:600;fill:var(--primary-dark);text-anchor:middle;pointer-events:none;}
+  .super-lbl{font-weight:500;fill:#9aa6b5;text-anchor:middle;pointer-events:none;}
+  .tip{position:fixed;max-width:230px;background:#fff;border:1px solid rgba(53,77,173,.18);border-radius:10px;
+       padding:9px 12px;box-shadow:0 10px 26px -12px rgba(53,77,173,.45);pointer-events:none;opacity:0;
+       transition:opacity .12s;z-index:9;}
+  .tip b{display:block;font-size:12.5px;color:var(--primary-dark);margin-bottom:3px;}
+  .tip span{font-size:11px;line-height:1.45;color:var(--muted);}
+</style>
+</head>
+<body>
+  <svg id="svg" preserveAspectRatio="xMidYMid meet"></svg>
+  <div class="tip" id="tip"></div>
+<script>
+// ── Designed knowledge graph (knowledge_graph repo: "Estimating and testing proportions") ──
+const LECTURE = "Estimating and testing proportions";
+const TOPICS = [
+  { i:0,  title:"Binomial Distribution", parent:null, summary:"A discrete probability distribution for the number of successes in a fixed number of independent Bernoulli trials." },
+  { i:1,  title:"Point Estimation for Proportions", parent:0, summary:"Finding a single value or rule to represent the true population proportion p." },
+  { i:2,  title:"Method of Moments (MM)", parent:1, summary:"Equates the sample mean to the theoretical expected value to solve for parameters." },
+  { i:3,  title:"Maximum Likelihood Estimation (MLE)", parent:1, summary:"Estimates parameters by maximizing the likelihood function, often via the log-likelihood." },
+  { i:4,  title:"Confidence Intervals for Proportions", parent:0, summary:"Ranges used to estimate the true population proportion with a given level of confidence." },
+  { i:5,  title:"Wald Confidence Interval", parent:4, summary:"A confidence interval based on the Normal approximation of the binomial, using the standard error." },
+  { i:6,  title:"Wilson Score Interval", parent:4, summary:"Better coverage than the Wald interval, especially for small samples or extreme proportions." },
+  { i:7,  title:"Exact Confidence Interval", parent:4, summary:"Derived directly from the binomial distribution (e.g. Clopper-Pearson) rather than an approximation." },
+  { i:8,  title:"Hypothesis Testing for Proportions", parent:0, summary:"Procedures to test claims about a single proportion or the difference between two proportions." },
+  { i:9,  title:"Chi-squared Test of Independence", parent:8, summary:"Tests for a significant association between two categorical variables in a contingency table." },
+  { i:10, title:"Fisher's Exact Test", parent:8, summary:"A significance test for contingency tables, useful for small samples where Chi-squared fails." },
+  { i:11, title:"Continuity Correction", parent:0, summary:"An adjustment when a continuous distribution approximates a discrete one (Normal for Binomial)." },
+  { i:12, title:"Relative Risk (RR)", parent:8, summary:"The ratio of outcome probability in an exposed group to that in an unexposed group." },
+  { i:13, title:"Odds Ratio (OR)", parent:8, summary:"A measure of association between an exposure and an outcome." },
+];
+
+// ── Palette + deterministic colour (ported from knowledge_graph/src/lib/random.ts) ──
+function hashString(s){ let h=2166136261>>>0; for(let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,16777619);} return h>>>0; }
+function seededRng(seed){ let a=typeof seed==="string"?hashString(seed):seed>>>0; return function(){ a=(a+0x6d2b79f5)>>>0; let t=a; t=Math.imul(t^(t>>>15),t|1); t^=t+Math.imul(t^(t>>>7),t|61); return ((t^(t>>>14))>>>0)/4294967296; }; }
+const PALETTE=[
+  {base:"#FBE38E",deep:"#E0A800"},{base:"#B8E3A4",deep:"#2E7D32"},{base:"#F6B3B6",deep:"#D32F2F"},
+  {base:"#F7B97A",deep:"#E65100"},{base:"#A6CFEA",deep:"#1565C0"},{base:"#D9C7EF",deep:"#6A1B9A"},
+];
+function colorForId(id){ const rng=seededRng(`color:${id}`); return PALETTE[Math.floor(rng()*PALETTE.length)]; }
+
+// ── Teardrop unit path (head at 0,0, tail tip at +x 1.3643) ──
+const TEARDROP="M -1 0 C -1 -0.5523 -0.5523 -1 0 -1 C 0.3285 -1 0.62 -0.8416 0.8024 -0.5969 C 0.8334 -0.5553 0.8681 -0.4972 0.9091 -0.4318 C 0.9496 -0.367 0.9961 -0.2958 1.0499 -0.2298 C 1.1334 -0.1272 1.2360 -0.0356 1.3643 0 C 1.2360 0.0356 1.1334 0.1272 1.0499 0.2298 C 0.9961 0.2958 0.9496 0.367 0.9091 0.4318 C 0.8681 0.4972 0.8334 0.5553 0.8024 0.5969 C 0.62 0.8416 0.3285 1 0 1 C -0.5523 1 -1 0.5523 -1 0 Z";
+
+// ── Layout ──
+const SIZE={focus:96, child:46, grand:14};
+const D_CHILD=250, D_GRAND=94;
+const DEG=Math.PI/180;
+const children = id => TOPICS.filter(t=>t.parent===id).map(t=>t.i);
+
+const pos={}, role={};
+pos[0]={x:0,y:0}; role[0]="focus";
+// children of focus, mapped to screen angles (y-down; 0=right, 90=down)
+const CHILD_ANGLE={4:215, 8:325, 1:160, 11:20};
+const focusKids=children(0);
+focusKids.forEach(ci=>{
+  const a=(CHILD_ANGLE[ci]??0)*DEG;
+  pos[ci]={x:Math.cos(a)*D_CHILD, y:Math.sin(a)*D_CHILD}; role[ci]="child";
+  const gk=children(ci);
+  const baseA=CHILD_ANGLE[ci]; // grandchildren fan outward along the same direction
+  const step=34, spread=(gk.length-1)*step;
+  gk.forEach((gi,k)=>{
+    const ga=(baseA - spread/2 + k*step)*DEG;
+    pos[gi]={x:pos[ci].x+Math.cos(ga)*D_GRAND, y:pos[ci].y+Math.sin(ga)*D_GRAND}; role[gi]="grand";
+  });
+});
+// super (lecture) sits below the focus; focus tail points to it
+const superPos={x:0, y:D_CHILD*1.7};
+
+// ── Build SVG ──
+const SVGNS="http://www.w3.org/2000/svg";
+const svg=document.getElementById("svg");
+const tip=document.getElementById("tip");
+const defs=document.createElementNS(SVGNS,"defs"); svg.appendChild(defs);
+const edgeLayer=document.createElementNS(SVGNS,"g"); svg.appendChild(edgeLayer);
+const nodeLayer=document.createElementNS(SVGNS,"g"); svg.appendChild(nodeLayer);
+const el=(t,a={})=>{const e=document.createElementNS(SVGNS,t);for(const k in a)e.setAttribute(k,a[k]);return e;};
+
+function parentPos(t){ return t.parent==null ? superPos : pos[t.parent]; }
+
+// edges (parent head -> child head)
+for(const t of TOPICS){ const p=parentPos(t), c=pos[t.i];
+  const ln=el("line",{class:"edge", x1:p.x,y1:p.y,x2:c.x,y2:c.y, "data-i":t.i}); edgeLayer.appendChild(ln); t._edge=ln; }
+
+function wrap(s,max,maxLines){ const w=s.split(" "); const out=[]; let cur="";
+  for(const x of w){ const tt=cur?cur+" "+x:x; if(tt.length>max&&cur){out.push(cur);cur=x;}else cur=tt; }
+  if(cur)out.push(cur); return out.slice(0,maxLines); }
+
+const adj={}; TOPICS.forEach(t=>adj[t.i]=new Set());
+for(const t of TOPICS){ if(t.parent!=null){ adj[t.i].add(t.parent); adj[t.parent].add(t.i); } }
+
+const nodeEls={};
+for(const t of TOPICS){
+  const c=pos[t.i], r=SIZE[role[t.i]], col=colorForId(String(t.i));
+  const ang=Math.atan2(parentPos(t).y-c.y, parentPos(t).x-c.x)/DEG; // tail points to parent
+  // per-node gradient: default objectBoundingBox, horizontal (head=left=base -> tail=right=deep).
+  // Rotates/scales with the teardrop because it's relative to the path's own bbox.
+  const gid=`g${t.i}`;
+  const grad=el("linearGradient",{id:gid, x1:"0", y1:"0", x2:"1", y2:"0"});
+  grad.appendChild(el("stop",{offset:"0", "stop-color":col.base}));
+  grad.appendChild(el("stop",{offset:"0.55", "stop-color":col.base}));
+  grad.appendChild(el("stop",{offset:"1", "stop-color":col.deep}));
+  defs.appendChild(grad);
+
+  const g=el("g",{class:"node", "data-i":t.i});
+  const inner=el("g",{transform:`translate(${c.x},${c.y}) rotate(${ang}) scale(${r})`});
+  inner.appendChild(el("path",{class:"teardrop", d:TEARDROP, fill:`url(#${gid})`}));
+  g.appendChild(inner);
+
+  if(role[t.i]==="focus"){
+    const lines=wrap(t.title,12,2); const fs=21, lh=24;
+    lines.forEach((ln,k)=>{ const tx=el("text",{class:"focus-lbl","font-size":fs, x:c.x, y:c.y-(lines.length-1)*lh/2 + k*lh, "dominant-baseline":"central"}); tx.textContent=ln; g.appendChild(tx); });
+  } else if(role[t.i]==="child"){
+    // chip label, placed clear of the node + its grandchildren on the outward-horizontal side
+    const lines=wrap(t.title,20,2); const fs=13, lh=15.5;
+    const w=Math.max(...lines.map(l=>l.length))*fs*0.55+18;
+    const h=lines.length*lh+10;
+    const gk=children(t.i);
+    const pts=[{x:c.x,s:r}, ...gk.map(gi=>({x:pos[gi].x,s:SIZE.grand}))];
+    const minX=Math.min(...pts.map(q=>q.x-q.s)), maxX=Math.max(...pts.map(q=>q.x+q.s));
+    const side = c.x<0 ? -1 : 1;
+    const lx = side<0 ? (minX-14-w/2) : (maxX+14+w/2);
+    const ly = c.y;
+    const chip=el("g",{class:"chip"});
+    chip.appendChild(el("rect",{x:lx-w/2, y:ly-h/2, width:w, height:h, rx:8}));
+    lines.forEach((ln,k)=>{ const tx=el("text",{x:lx, y:ly-(lines.length-1)*lh/2 + k*lh, "font-size":fs, "dominant-baseline":"central"}); tx.textContent=ln; chip.appendChild(tx); });
+    g.appendChild(chip);
+  }
+  nodeLayer.appendChild(g);
+  nodeEls[t.i]=g;
+
+  g.addEventListener("mouseenter",e=>{ showTip(t,e); highlight(t.i,true); });
+  g.addEventListener("mousemove",e=>moveTip(e));
+  g.addEventListener("mouseleave",()=>{ tip.style.opacity=0; highlight(t.i,false); });
+}
+
+// super label
+const slines=wrap(LECTURE,30,2);
+slines.forEach((ln,k)=>{ const tx=el("text",{class:"super-lbl","font-size":15, x:superPos.x, y:superPos.y-20+k*18}); tx.textContent=ln; nodeLayer.appendChild(tx); });
+
+// viewBox: fit to the actual rendered geometry (nodes, chips, labels, edges)
+function fit(){
+  const bb=nodeLayer.getBBox(), eb=edgeLayer.getBBox();
+  const minX=Math.min(bb.x,eb.x), minY=Math.min(bb.y,eb.y);
+  const maxX=Math.max(bb.x+bb.width,eb.x+eb.width), maxY=Math.max(bb.y+bb.height,eb.y+eb.height);
+  const pad=34;
+  svg.setAttribute("viewBox",`${minX-pad} ${minY-pad} ${maxX-minX+2*pad} ${maxY-minY+2*pad}`);
+}
+fit();
+window.addEventListener("resize", fit);
+
+function highlight(i,on){
+  if(on){ const keep=new Set([i,...adj[i]]);
+    TOPICS.forEach(t=>nodeEls[t.i].classList.toggle("dim",!keep.has(t.i)));
+    TOPICS.forEach(t=>t._edge.classList.toggle("dim",!(t.i===i||t.parent===i)));
+  } else {
+    TOPICS.forEach(t=>{nodeEls[t.i].classList.remove("dim"); t._edge.classList.remove("dim");});
+  }
+}
+function showTip(t,e){ tip.innerHTML=`<b>${t.title}</b><span>${t.summary}</span>`; tip.style.opacity=1; moveTip(e); }
+function moveTip(e){ const w=240; let x=e.clientX+16, y=e.clientY+16;
+  if(x+w>window.innerWidth) x=e.clientX-w-16; if(y+120>window.innerHeight) y=e.clientY-120;
+  tip.style.left=x+"px"; tip.style.top=y+"px"; }
+</script>
+</body>
+</html>

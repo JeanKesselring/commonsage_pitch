@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Carbon Cycle diagram</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geologica:wght@400;600&family=Miriam+Libre:wght@700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --ink: #070707;
+    --muted: #262626;
+    --primary: #87d3ff;
+    --primary-dark: #354dad;
+    --surface: #dbf8ff;
+    --elevated: #ecfcff;
+    --border: #d7d2cc;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    font-family: "Geologica", system-ui, sans-serif;
+    color: var(--ink);
+    background: var(--elevated);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .head {
+    padding: 14px 18px 8px;
+    flex-shrink: 0;
+  }
+  .head h2 {
+    font-family: "Miriam Libre", serif;
+    font-weight: 700;
+    color: var(--primary-dark);
+    margin: 0;
+    font-size: clamp(15px, 3.2vw, 22px);
+    line-height: 1.1;
+  }
+  .head p { margin: 3px 0 0; font-size: clamp(10px, 1.9vw, 13px); color: var(--muted); }
+  .stage { position: relative; flex: 1; min-height: 0; }
+  svg { display: block; width: 100%; height: 100%; user-select: none; }
+  .tip {
+    position: absolute;
+    width: 190px;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 9px 11px;
+    box-shadow: 0 8px 22px -10px rgba(53,77,173,0.35);
+    pointer-events: none;
+    z-index: 5;
+    opacity: 0;
+    transition: opacity .12s;
+  }
+  .tip b { display: block; font-size: 12px; color: var(--primary-dark); margin-bottom: 3px; }
+  .tip span { font-size: 11px; line-height: 1.45; color: var(--muted); }
+  .hint {
+    position: absolute; bottom: 8px; left: 0; right: 0; text-align: center;
+    font-size: 11px; color: var(--muted); opacity: .7; pointer-events: none;
+  }
+  @keyframes node-pop { from { opacity: 0; transform: scale(.6); } to { opacity: 1; transform: scale(1); } }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+  @keyframes flow { to { stroke-dashoffset: -1; } }
+</style>
+</head>
+<body>
+  <div class="head">
+    <h2>Carbon Cycle</h2>
+    <p>Global circulation of carbon through atmosphere, biosphere &amp; geosphere</p>
+  </div>
+  <div class="stage" id="stage">
+    <svg id="svg" aria-label="Carbon cycle diagram"></svg>
+    <div class="tip" id="tip"></div>
+    <div class="hint">Hover or tap a node</div>
+  </div>
+
+<script>
+// ── Real module data (diagram_schematic / Carbon Cycle) ─────────────────────
+const DATA = {
+  diagram_type: "cycle",
+  nodes: [
+    { id:"atmosphere",    label:"Atmosphere",    shape:"oval",    color:"blue",   description:"Reservoir of CO₂ and other carbon gases in the air. Concentration has risen from ~280 ppm pre-industrial to over 420 ppm today." },
+    { id:"photosynthesis",label:"Photosynthesis",shape:"box",     color:"green",  description:"Plants and algae absorb atmospheric CO₂ and use sunlight to convert it into sugars, storing carbon in biomass." },
+    { id:"biomass",       label:"Living Biomass",shape:"oval",    color:"green",  description:"Carbon stored in all living organisms: plants, animals, fungi, and microbes. Releases CO₂ through respiration." },
+    { id:"respiration",   label:"Respiration",   shape:"box",     color:"orange", description:"Organisms break down sugars to release energy, returning CO₂ to the atmosphere as a byproduct." },
+    { id:"decomposition", label:"Decomposition", shape:"box",     color:"gray",   description:"Dead organic matter is broken down by bacteria and fungi, releasing carbon back into the soil and atmosphere." },
+    { id:"soil_carbon",   label:"Soil Carbon",   shape:"oval",    color:"gray",   description:"Organic carbon stored in soil as humus and dead matter, the largest terrestrial carbon reservoir." },
+    { id:"fossil_fuels",  label:"Fossil Fuels",  shape:"oval",    color:"red",    description:"Coal, oil, and natural gas formed from ancient organic matter over millions of years of geological pressure." },
+    { id:"combustion",    label:"Combustion",    shape:"diamond", color:"red",    description:"Burning fossil fuels and biomass releases stored carbon as CO₂, rapidly returning geological carbon to the atmosphere." }
+  ],
+  edges: [
+    { from:"atmosphere", to:"photosynthesis", label:"absorbed",          style:"solid" },
+    { from:"photosynthesis", to:"biomass",     label:null,               style:"solid" },
+    { from:"biomass", to:"respiration",        label:null,               style:"solid" },
+    { from:"respiration", to:"atmosphere",     label:"CO₂ released",      style:"solid" },
+    { from:"biomass", to:"decomposition",      label:"death",            style:"dashed" },
+    { from:"decomposition", to:"soil_carbon",  label:null,               style:"solid" },
+    { from:"soil_carbon", to:"atmosphere",     label:null,               style:"dashed" },
+    { from:"soil_carbon", to:"fossil_fuels",   label:"millions of years",style:"dashed" },
+    { from:"fossil_fuels", to:"combustion",    label:null,               style:"solid" },
+    { from:"combustion", to:"atmosphere",      label:"CO₂",              style:"solid" }
+  ]
+};
+
+// ── Palette (light variants ported from the source component) ───────────────
+const CF = { blue:"#dbeafe", red:"#fee2e2", green:"#d1fae5", orange:"#ffedd5", gray:"#f3f4f6" };
+const CS = { blue:"#60a5fa", red:"#f87171", green:"#34d399", orange:"#fb923c", gray:"#9ca3af" };
+const CFH= { blue:"#bfdbfe", red:"#fecaca", green:"#a7f3d0", orange:"#fed7aa", gray:"#e5e7eb" };
+
+const NW=120, NH=44, DS=50, CR=30, PAD=46;
+const SVGNS = "http://www.w3.org/2000/svg";
+const svg = document.getElementById("svg");
+const tip = document.getElementById("tip");
+const stage = document.getElementById("stage");
+
+const nodes = DATA.nodes;
+const edges = DATA.edges;
+const nodeMap = new Map(nodes.map(n => [n.id, n]));
+
+// Cycle layout - equidistant ring (ported from layoutCycle)
+const n = nodes.length;
+const R = Math.max(180, n * (NW + 24) / (2 * Math.PI));
+const pos = new Map();
+nodes.forEach((nd, i) => {
+  const a = (2 * Math.PI * i / n) - Math.PI / 2;
+  pos.set(nd.id, { x: R * Math.cos(a), y: R * Math.sin(a) });
+});
+
+function hw(s){ return s==="circle"?CR : s==="diamond"?DS : NW/2; }
+function hh(s){ if(s==="circle")return CR; if(s==="diamond")return DS; if(s==="oval")return NH/2+4; return NH/2; }
+function boundary(cx,cy,s,a){
+  if(s==="circle") return {x:cx+CR*Math.cos(a), y:cy+CR*Math.sin(a)};
+  const ex=hw(s), ey=hh(s), cos=Math.cos(a), sin=Math.sin(a);
+  const t=Math.min(Math.abs(cos)>1e-9?ex/Math.abs(cos):1e9, Math.abs(sin)>1e-9?ey/Math.abs(sin):1e9);
+  return {x:cx+cos*t, y:cy+sin*t};
+}
+
+// viewBox
+let minX=1e9,minY=1e9,maxX=-1e9,maxY=-1e9;
+for(const [id,p] of pos){ const s=nodeMap.get(id).shape; minX=Math.min(minX,p.x-hw(s)); minY=Math.min(minY,p.y-hh(s)); maxX=Math.max(maxX,p.x+hw(s)); maxY=Math.max(maxY,p.y+hh(s)); }
+svg.setAttribute("viewBox", `${minX-PAD} ${minY-PAD} ${maxX-minX+PAD*2} ${maxY-minY+PAD*2}`);
+svg.setAttribute("preserveAspectRatio","xMidYMid meet");
+
+const el = (t,a={}) => { const e=document.createElementNS(SVGNS,t); for(const k in a) e.setAttribute(k,a[k]); return e; };
+
+// defs: arrowheads
+const defs = el("defs");
+defs.innerHTML = `
+  <marker id="arr" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#94a3b8"/></marker>
+  <marker id="arrH" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#475569"/></marker>`;
+svg.appendChild(defs);
+
+const edgeLayer = el("g");
+const nodeLayer = el("g");
+svg.appendChild(edgeLayer);
+svg.appendChild(nodeLayer);
+
+// Build edges
+const edgeEls = edges.map((e,i) => {
+  const sp=pos.get(e.from), tp=pos.get(e.to);
+  const ang=Math.atan2(tp.y-sp.y, tp.x-sp.x);
+  const a=boundary(sp.x,sp.y,nodeMap.get(e.from).shape,ang);
+  const b=boundary(tp.x,tp.y,nodeMap.get(e.to).shape,ang+Math.PI);
+  const d=`M${a.x},${a.y} L${b.x},${b.y}`;
+  const g=el("g");
+  const base=el("path",{d, fill:"none", stroke:"#94a3b8", "stroke-width":1.5, "marker-end":"url(#arr)"});
+  if(e.style==="dashed") base.setAttribute("stroke-dasharray","6,4");
+  else { const L=Math.hypot(b.x-a.x,b.y-a.y); base.style.strokeDasharray=L; base.style.strokeDashoffset=L; base.style.animation=`draw .6s ease ${i*70}ms forwards`; }
+  g.appendChild(base);
+  // flow dots
+  const flow=el("path",{d, fill:"none", stroke:"#94a3b8", "stroke-width":4, "stroke-dasharray":"0.05 0.5", pathLength:1});
+  flow.style.opacity=.7; flow.style.strokeDashoffset=0; flow.style.animation=`flow 2.4s linear ${800+i*60}ms infinite`;
+  g.appendChild(flow);
+  let label=null;
+  if(e.label){
+    const lx=(a.x+b.x)/2, ly=(a.y+b.y)/2;
+    const bg=el("rect",{x:lx-e.label.length*3.2, y:ly-8, width:e.label.length*6.4, height:14, rx:3, fill:"#fff", "fill-opacity":.92});
+    const tx=el("text",{x:lx, y:ly, "text-anchor":"middle", "dominant-baseline":"central", "font-size":9, fill:"#64748b"});
+    tx.textContent=e.label;
+    g.appendChild(bg); g.appendChild(tx); label={bg,tx};
+  }
+  edgeLayer.appendChild(g);
+  return {e, base, flow, label};
+});
+
+// Build nodes
+function wrap(label){
+  if(label.length<=13) return [label];
+  const words=label.split(" "); const lines=[]; let cur="";
+  for(const w of words){ const t=cur?cur+" "+w:w; if(t.length>13&&cur){lines.push(cur);cur=w;} else cur=t; }
+  if(cur) lines.push(cur); return lines.slice(0,2);
+}
+const nodeEls = nodes.map((nd,i) => {
+  const p=pos.get(nd.id);
+  const g=el("g",{ "data-id":nd.id, style:`cursor:pointer; transform-box:fill-box; transform-origin:center; animation: node-pop .5s cubic-bezier(.34,1.56,.64,1) ${i*60}ms both;` });
+  let shape;
+  const fill=CF[nd.color], stroke=CS[nd.color];
+  if(nd.shape==="diamond") shape=el("polygon",{points:`${p.x},${p.y-DS} ${p.x+DS},${p.y} ${p.x},${p.y+DS} ${p.x-DS},${p.y}`, fill, stroke, "stroke-width":1.5});
+  else if(nd.shape==="circle") shape=el("circle",{cx:p.x, cy:p.y, r:CR, fill, stroke, "stroke-width":1.5});
+  else if(nd.shape==="oval") shape=el("ellipse",{cx:p.x, cy:p.y, rx:NW/2, ry:NH/2+4, fill, stroke, "stroke-width":1.5});
+  else shape=el("rect",{x:p.x-NW/2, y:p.y-NH/2, width:NW, height:NH, rx:8, fill, stroke, "stroke-width":1.5});
+  g.appendChild(shape);
+  const lines=wrap(nd.label); const lh=14; const ty=lines.length===1?p.y:p.y-lh/2;
+  lines.forEach((ln,li)=>{ const t=el("text",{x:p.x, y:ty+li*lh, "text-anchor":"middle", "dominant-baseline":"central", "font-size":11, "font-weight":600, fill:"#1e293b", style:"pointer-events:none;"}); t.textContent=ln; g.appendChild(t); });
+  nodeLayer.appendChild(g);
+  return {nd, g, shape};
+});
+
+// Interactivity: hover/click highlight + neighbor dimming
+let active=null;
+function neighbors(id){ const s=new Set([id]); for(const e of edges){ if(e.from===id)s.add(e.to); if(e.to===id)s.add(e.from); } return s; }
+function apply(){
+  const set = active ? neighbors(active) : null;
+  nodeEls.forEach(({nd,g,shape})=>{
+    const on = nd.id===active;
+    shape.setAttribute("fill", on?CFH[nd.color]:CF[nd.color]);
+    shape.setAttribute("stroke-width", on?2.5:1.5);
+    g.style.opacity = (set && !set.has(nd.id)) ? .28 : 1;
+  });
+  edgeEls.forEach(({e,base,flow})=>{
+    const on = active && (e.from===active||e.to===active);
+    base.setAttribute("stroke", on?"#475569":"#94a3b8");
+    base.setAttribute("marker-end", on?"url(#arrH)":"url(#arr)");
+    flow.setAttribute("stroke", on?"#475569":"#94a3b8");
+    if(set){ const dim = !(e.from===active||e.to===active); base.parentNode.style.opacity = dim?.25:1; }
+    else base.parentNode.style.opacity=1;
+  });
+}
+function showTip(nd, clientX, clientY){
+  if(!nd.description){ tip.style.opacity=0; return; }
+  tip.innerHTML = `<b>${nd.label}</b><span>${nd.description}</span>`;
+  const r=stage.getBoundingClientRect();
+  let x=clientX-r.left+14, y=clientY-r.top+14;
+  x=Math.min(x, r.width-200); y=Math.min(y, r.height-90);
+  tip.style.left=x+"px"; tip.style.top=y+"px"; tip.style.opacity=1;
+}
+nodeEls.forEach(({nd,g})=>{
+  g.addEventListener("mouseenter",(ev)=>{ if(active===null){ active=nd.id; apply(); } showTip(nd,ev.clientX,ev.clientY); });
+  g.addEventListener("mousemove",(ev)=>showTip(nd,ev.clientX,ev.clientY));
+  g.addEventListener("mouseleave",()=>{ tip.style.opacity=0; if(active===nd.id && !g.dataset.locked){ active=null; apply(); } });
+  g.addEventListener("click",(ev)=>{ active = active===nd.id?null:nd.id; apply(); showTip(nd,ev.clientX,ev.clientY); });
+});
+</script>
+</body>
+</html>
