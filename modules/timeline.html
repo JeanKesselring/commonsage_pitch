@@ -85,7 +85,7 @@ function render(){
     const c=document.createElement("div");
     c.className="card"; c.draggable=true;
     c.innerHTML=`<span class="pos">${i+1}</span>`+
-                `<div class="body"><div class="date">${ev.date}</div><div class="label">${ev.label}</div></div>`+
+                `<div class="body"><div class="label">${ev.label}</div></div>`+
                 `<span class="grip">⠿</span>`;
     list.appendChild(c);
   });

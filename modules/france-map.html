@@ -92,13 +92,12 @@ function inRing(lng,lat,ring){ let inside=false;
 function inFrance(lng,lat){ return FRA.some(r=>inRing(lng,lat,r)); }
 
 // ── Map ──────────────────────────────────────────────────────────────────────
+const SEA    = "rgba(236, 252, 255, .94)"; // ocean fill
+const SHORE  = "#354dad";                  // design-system --primary-dark (shoreline outline)
+const BORDER = "rgba(38, 38, 38, .32)";    // darker country borders (design-system ink)
 const map = new maplibregl.Map({
   container:"map",
-  style:{ version:8,
-    sources:{ carto:{ type:"raster", tileSize:256,
-      tiles:["https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png","https://b.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png","https://c.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png"],
-      attribution:"© OpenStreetMap © CARTO" } },
-    layers:[{ id:"carto", type:"raster", source:"carto" }] },
+  style:"https://basemaps.cartocdn.com/gl/positron-nolabels-gl-style/style.json",
   center:[2.6,46.6], zoom:4.3, attributionControl:{compact:true}
 });
 map.addControl(new maplibregl.NavigationControl({showCompass:false}),"bottom-right");
@@ -106,6 +105,23 @@ map.addControl(new maplibregl.NavigationControl({showCompass:false}),"bottom-rig
 let qi=0, score=0, guess=null, phase="waiting", guessMarker=null, answerMarker=null;
 
 map.on("load",()=>{
+  // Recolor the sea to the design-system surface blue.
+  let waterSrc=null, waterSrcLayer=null;
+  map.getStyle().layers.forEach(l=>{
+    if(l.type==="fill" && /water|ocean|sea/i.test(l.id)){
+      map.setPaintProperty(l.id,"fill-color",SEA);
+      map.setPaintProperty(l.id,"fill-opacity",1);
+      waterSrc=l.source; waterSrcLayer=l["source-layer"];
+    }
+  });
+  // Darken the country borders a touch.
+  if(map.getLayer("boundary_country_inner")) map.setPaintProperty("boundary_country_inner","line-color",BORDER);
+  // Trace the shoreline (boundary of the water polygons).
+  if(waterSrc){
+    map.addLayer({ id:"shoreline", type:"line", source:waterSrc, "source-layer":waterSrcLayer,
+      paint:{ "line-color":SHORE, "line-opacity":0.7,
+              "line-width":["interpolate",["linear"],["zoom"],3,0.6,7,1.6] } });
+  }
   map.addSource("fra",{ type:"geojson", data:{ type:"Feature", geometry:{ type:"MultiPolygon", coordinates: FRA.map(r=>[r]) } } });
   map.addLayer({ id:"fra-fill", type:"fill", source:"fra", paint:{"fill-color":"#87d3ff","fill-opacity":0} });
   map.addLayer({ id:"fra-line", type:"line", source:"fra", paint:{"line-color":"#354dad","line-width":0} });
